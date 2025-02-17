@@ -1,6 +1,6 @@
 import hl7
 import requests
-from utils import generate_id
+
 
 class MessageCreator:
     def __init__(self):

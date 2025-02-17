@@ -2,6 +2,7 @@ import flask
 import hl7
 from utils.checker import *
 from utils.MongoDBClient import *
+from utils import utils
 
 app = flask.Flask(__name__)
 
@@ -19,4 +20,17 @@ def test_hello_world():
 def receive_hl7_message():
     message = flask.request.get_data()
     message = hl7.parse(message)
-    return flask.Response(str(message.create_ack("AA")), mimetype='text/hl7')
+    # Routing the message type of the hl7 request in order to check it
+    correct = Checker().check_message_type(message)
+    if correct:
+        # patient already store in DB
+        if client.get_document("patients", {"_id": message.extract_field("PID", field_num=3, repeat_num=1, component_num=1, subcomponent_num=1)}) != None:
+            client.update_document("patients_stat", message.extract_field("PID", field_num=3, repeat_num=1, component_num=1, subcomponent_num=1), utils.extract_status_information(message, "ADM"))
+        else:
+            patient_information = utils.extract_patient_information(message)
+        # Save in DB
+            client.add_document("patients", patient_information)
+            client.add_document("patient_status", utils.extract_status_information(message, "ADM"))
+            return flask.Response(str(message.create_ack("AA")), mimetype="text/hl7")
+    else:
+        return flask.Response(str(message.create_ack("AE")), mimetype='text/hl7')
