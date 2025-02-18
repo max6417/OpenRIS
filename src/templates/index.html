@@ -1,11 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body>
-        <h1>{{title}}</h1>
-        <p>{{message}}</p>
-    </body>
-</html>
+{% extends "material/base.html" %}
+{%  import "material/utils.html" as util %}
+{% import "material/wtf.html" as wtf %}
+{% block title %} {{ title }} {% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="col s12 m6">
+            {{ util.card("Hello World", wtf.quick_form(canvas)) }}
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var modality = document.getElementById("imaging_modality");
+            if (modality) modality.style.display = "block";
+        });
+    </script>
+{% endblock %}
