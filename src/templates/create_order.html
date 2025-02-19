@@ -1,0 +1,14 @@
+<form method="POST" action="create_new_order">
+    <div class="form-row">
+        <div class>
+            {{ form.csrf_token() }}
+            {{ form.patient_name }}
+            {{ form.ordering_physician }}
+            {{ form.imaging_modality }}
+            {{ form.exam_type }}
+            {{ form.add_note }}
+            {{ form.examination_date }}
+            {{ form.submit }}
+        </div>
+    </div>
+</form>

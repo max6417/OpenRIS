@@ -1,5 +1,6 @@
 import flask
 import hl7
+from flask import request
 from flask_material import Material
 from utils.checker import *
 from utils.MongoDBClient import *
@@ -10,6 +11,7 @@ app = flask.Flask(__name__)
 Material(app)
 app.config['SECRET_KEY'] = "ADMIN"
 
+"""
 client = MongoDBClient()
 if "patients" not in client.list_databases():
     print("no database")
@@ -38,11 +40,16 @@ def receive_hl7_message():
             return flask.Response(str(message.create_ack("AA")), mimetype="text/hl7")
     else:
         return flask.Response(str(message.create_ack("AE")), mimetype='text/hl7')
+"""
 
 
-@app.route("/create_new_order", methods=["GET"])
+@app.route("/create_new_order", methods=["GET", "POST"])
 def create_new_order():
     form = Order()
-    return flask.render_template("index.html", title="Create Order", canvas= form)
+    if form.is_submitted() and request.method == "POST":    # This works
+        print(form.patient_name.data)
+    return flask.render_template("index.html", form=form)
+
+
 
 
