@@ -1,14 +1,85 @@
-<form method="POST" action="create_new_order">
-    <div class="form-row">
-        <div class>
-            {{ form.csrf_token() }}
-            {{ form.patient_name }}
-            {{ form.ordering_physician }}
-            {{ form.imaging_modality }}
-            {{ form.exam_type }}
-            {{ form.add_note }}
-            {{ form.examination_date }}
-            {{ form.submit }}
+{% extends 'index.html' %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col s12 m8 offset-m2 l6 offset-l3">
+                <div class="card">
+                    <div class="card-content" style="padding: 20px">
+                        <span class="card-title">New Order</span>
+                        <form method="POST" action="create_new_order">
+                        {{ form.csrf_token }}
+                        {{ form.hidden_tag() }}
+                            <div class="form-row">
+                                <div class="row">
+                                    <div class="input-field col s6">
+                                        {{ form.patient_name.label }}
+                                        {{ form.patient_name(class="validate") }}
+                                    </div>
+                                    <div class="input-field col s6">
+                                        {{ form.ordering_physician.label }}
+                                        {{ form.ordering_physician(class="validate") }}
+                                    </div>
+                                </div>
+                                <div class="input-field">
+                                    {{ form.imaging_modality(class="validate") }}
+                                </div>
+                                <div class="input-field">
+                                    {{ form.exam_type.label }}
+                                    {{ form.exam_type(class="validate") }}
+                                </div>
+                                <div class="input-field">
+                                    {{ form.add_note.label }}
+                                    {{ form.add_note(class="materialize-textarea") }}
+                                </div>
+                                <div class="row">
+                                    <div class="input-field col s6">
+                                        {{ form.examination_date.date(class="validate datepicker") }}
+                                        <label>Day of Examination</label>
+                                        {% if form.examination_date.date.errors %}
+                                            <span class="helper-text red-text">Wrong Date</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="input-field col s6">
+                                        {{ form.examination_date.timing(class="validate timepicker") }}
+                                        <label>Hours of Examination</label>
+                                        {% if form.examination_date.timing.errors %}
+                                            <span class="helper-text red-text">Wrong Timing</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-action">
+                                {{ form.submit(class="btn waves-effect waves-light") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</form>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            var datepick = document.querySelectorAll('.datepicker');
+            var datepickerInst = M.Datepicker.init(datepick, {
+                autoClose: true,
+                format: 'yyyy-mm-dd',
+            });
+            var timepick = document.querySelectorAll('.timepicker');
+            var timepickerInst = M.Timepicker.init(timepick, {
+                autoClose: true,
+                twelveHour: false,
+            });
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'toast' %}
+                            // Affiche un toast Materialize
+                            M.toast({html: '{{ message }}', classes: 'rounded'});
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+{% endblock %}
