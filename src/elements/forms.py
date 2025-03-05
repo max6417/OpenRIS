@@ -6,6 +6,10 @@ from wtforms.fields import TimeField
 import json
 # Attention render_kw permet de définir classes et id d'un element
 import datetime
+from utils import MongoDBClient
+
+
+client = MongoDBClient.MongoDBClient()
 
 
 class BaseForm(FlaskForm):
@@ -36,6 +40,12 @@ class Order(BaseForm):
     # patient information
 
     patient_name = StringField(label="Patient Name", validators=[DataRequired("Enter the patient's name")])
+
+    ## Additional Field ##
+    patient_surname = StringField(label="Patient Surname", validators=[DataRequired("Enter the patient' surname")])
+    patient_dob = DateField("Date of Birth", format='%Y-%m-%d', validators=[DataRequired()])
+    ##  ##
+
     imaging_modality = SelectField(
         "Modality",
         choices=choices,
@@ -52,7 +62,13 @@ class Order(BaseForm):
     submit = SubmitField("Submit")
 
     def validate_patient_name(self, field):
-        pass
+        # Change the function to only get document from DB
+        p_name = field.data
+        p_surname = self.patient_surname.data
+        p_dob = str(self.patient_dob.data)
+        curr_patient = client.get_document("patients", {'name': p_name, 'surname': p_surname, 'dob': p_dob})
+        if curr_patient == 0:
+            raise ValidationError('no_patient')
 
     def validate_imaging_modality(self, field):
         pass

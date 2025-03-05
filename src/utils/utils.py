@@ -6,6 +6,17 @@ def generate_id():
     return str(uuid.uuid4())
 
 
+def check_examination_date_overlapping(current_examination_date, examination_dates):
+    if len(examination_dates) == 0:
+        return False
+    for examination in examination_dates:
+        if current_examination_date["start_time"] <= examination["examination_date"]["start_time"] and current_examination_date["end_time"] >= examination["examination_date"]["start_time"]:
+            return True
+        if current_examination_date["start_time"] <= examination["examination_date"]["end_time"] and current_examination_date["end_time"] >= examination["examination_date"]["end_time"]:
+            return True
+    return False    # There is no conflicts
+
+
 def extract_patient_information(parsed_message):
     return {
         "_id": parsed_message.extract_field("PID", field_num=3, repeat_num=1, component_num=1, subcomponent_num=1),

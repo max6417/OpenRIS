@@ -4,7 +4,7 @@ from pymongo import MongoClient, errors
 class MongoDBClient:
 
     def __init__(self, url="mongodb://127.17.0.2:27017"):
-        self.client = MongoClient(host=[url])
+        self.client = MongoClient(host=[url])["app"]
 
     def list_databases(self):
         return self.client.list_database_names()
