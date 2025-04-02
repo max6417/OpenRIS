@@ -1,0 +1,67 @@
+{% extends 'index.html' %}
+
+{% macro summarize_patient(patient) %}
+    <tr>
+        <td>{{ patient._id }}</td>
+        <td>{{ patient.name }}</td>
+        <td>{{ patient.surname }}</td>
+        <td>{{ patient.sex }}</td>
+        <td>{{ patient.dob }}</td>
+        <td>{{ patient.phone_number }}</td>
+        <td>
+            <a class="btn-floating btn-small blue" href="/patient_information/{{ patient._id }}">
+                <i class="material-icons">remove_red_eye</i>
+            </a>
+            <a class="btn-floating btn-small grey" href="/edit_profile/{{ patient._id }}">
+                <i class="material-icons">edit</i>
+            </a>
+            <a class="btn-floating btn-small green" href="/create_new_order/{{ patient._id }}">
+                <i class="material-icons">add</i>
+            </a>
+        </td>
+    </tr>
+{% endmacro %}
+
+{% block content %}
+    <div class="section">
+        <div class="card-panel">
+            <h5>Search</h5>
+            <form method="POST" action="/patients">
+                <div class="row">
+                    <div class="input-field col s12 m4 l3">
+                        {{ search_form.patient_name.label }}
+                        {{ search_form.patient_name(class="validate") }}
+                    </div>
+                    <div class="input-field col s12 m4 l3">
+                        {{ search_form.patient_surname.label }}
+                        {{ search_form.patient_surname(class="validate") }}
+                    </div>
+                    <button class="btn waves-effect waves-light" type="submit" name="action">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="section">
+        <div class="card-panel">
+            <h5>Patients List</h5>
+            <table>
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>Name</th>
+                        <th>Surname</th>
+                        <th>Sex</th>
+                        <th>Date of Birth</th>
+                        <th>Phone Number</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                        {{ summarize_patient(patient) }}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

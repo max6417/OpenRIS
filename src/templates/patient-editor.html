@@ -1,0 +1,85 @@
+<!-- TODO - Implement this page to display form for demographics data -->
+{% extends 'index.html'%}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+           <div class="col s12 m8 offset-m2 l6 offset-l3">
+               <div class="card">
+                   <div class="card-content" style="padding: 20px">
+                       <span class="card-title">Update Patient Information</span>
+                       <form method="POST" action="/edit_profile/{{ id }}">
+                           <div class="form-row">
+                               <div class="row">
+                                   <div class="input-field col s6">
+                                       {{ form.patient_name.label }}
+                                       {{ form.patient_name(class="validate") }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_surname.label }}
+                                       {{ form.patient_surname(class="validate") }}
+                                   </div>
+                               </div>
+                               <div class="row">
+                                   <div class="input-field col s6">
+                                       {{ form.patient_dob.label }}
+                                       {{ form.patient_dob(class="validate dob datepicker") }}
+                                       <span class="helper-text" data-error="wrong" data-success="valid">Enter patient birth date</span>
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_sex(class="validate") }}
+                                       <span class="helper-text">Select Sex</span>
+                                   </div>
+                               </div>
+                               <div class="row">
+                                   <div class="input-field col s6">
+                                       {{ form.patient_phone_number.label }}
+                                       {{ form.patient_phone_number(class="validate", pattern="[0-9]{9}") }}
+                                       <span class="helper-text" data-error="incorrect format" data-success="valid">Enter phone number</span>
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_email.label }}
+                                       {{ form.patient_email(class="validate") }}
+                                       <span class="helper-text" data-error="incorrect format" data-success="valid">Enter Email</span>
+                                   </div>
+                               </div>
+                               <div class="row">
+                                   <div class="input-field col s6">
+                                       {{ form.patient_address.label }}
+                                       {{ form.patient_address() }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_address_complement.label }}
+                                       {{ form.patient_address_complement() }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_zip_code.label }}
+                                       {{ form.patient_zip_code(class="validate") }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_city.label }}
+                                       {{ form.patient_city() }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_country.label }}
+                                       {{ form.patient_country() }}
+                                   </div>
+                               </div>
+                               <div class="row">
+                                   <div class="input-field col s6">
+                                       {{ form.patient_referring_physician.label }}
+                                       {{ form.patient_referring_physician() }}
+                                   </div>
+                               </div>
+                           </div>
+                           <div class="card-action">
+                               <button class="btn waves-effect waves-light" type="submit" name="action">Update</button>
+                           </div>
+                       </form>
+                   </div>
+               </div>
+
+           </div>
+        </div>
+    </div>
+{% endblock %}

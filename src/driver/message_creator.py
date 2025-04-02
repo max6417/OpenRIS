@@ -1,6 +1,6 @@
 import hl7
 import requests
-
+from hl7_code import *
 
 class MessageCreator:
     def __init__(self):

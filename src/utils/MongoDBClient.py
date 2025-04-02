@@ -25,10 +25,10 @@ class MongoDBClient:
         return self.client[name].find_one(req)
 
     def get_documents(self, name, req):
-        return self.client[name].find(req)
+        return self.client[name].find(req).to_list()
 
     def update_document(self, name, id, updated):
-        updated = {"$set": {updated}}
+        updated = {"$set": updated}
         return self.client[name].update_one({"_id": id}, updated)
 
     def list_documents(self, name):

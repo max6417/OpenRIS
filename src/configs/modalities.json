@@ -1,0 +1,14 @@
+{
+  "modalities": [
+    {
+      "name": "CT",
+      "id": 1,
+      "proc_id": 77477000
+  },
+    {
+      "name": "MR",
+      "id": 2,
+      "proc_id": 113091000
+    }
+  ]
+}

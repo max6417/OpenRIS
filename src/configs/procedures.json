@@ -1,0 +1,33 @@
+{
+  "procedures": {
+    "CT": [
+      {
+        "id": 34227000,
+        "name": "COMPUTED TOMOGRAPHY OF BRAIN",
+        "duration": 20
+      },
+      {
+        "id": 241537006,
+        "name": "COMPUTED TOMOGRAPHY OF THYROID",
+        "duration": 20
+      },
+      {
+        "id": 702509005,
+        "name": "COMPUTED TOMOGRAPHY OF THYROID W CONTRAST",
+        "duration": 15
+      }
+    ],
+    "MR": [
+      {
+        "id": 241616006,
+        "name": "MAGNETIC RESONANCE IMAGING OF LUNGS",
+        "duration": 35
+      },
+      {
+        "id": 816077007,
+        "name": "MAGNETIC RESONANCE IMAGING OF BRAIN",
+        "duration": 30
+      }
+    ]
+  }
+}

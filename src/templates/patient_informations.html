@@ -1,0 +1,146 @@
+{% extends 'index.html' %}
+{% macro show_order_informations(orders, past) %}
+    <table>
+        {% if not past %}
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>Procedure</th>
+                    <th>Modality</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td>{{ order._id }}</td>
+                        <td>{{ order.procedure }}</td>
+                        <td>{{ order.modality }}</td>
+                        <td>{{ order.status }}</td>
+                        <td>{{ order.examination_date.date }}</td>
+                        <td>{{ order.examination_date.start_time }}</td>
+                        <td>{{ order.examination_date.end_time }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        {% else %}
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>Procedure</th>
+                    <th>Modality</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Action(s)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td>{{ order._id }}</td>
+                        <td>{{ order.procedure }}</td>
+                        <td>{{ order.modality }}</td>
+                        <td>{{ order.status }}</td>
+                        <td>{{ order.examination_date.date }}</td>
+                        <td>{{ order.examination_date.start_time }}</td>
+                        <td>{{ order.examination_date.end_time }}</td>
+                        <td>
+                            <a class="btn-floating btn-small grey" href="view_report/{{ order.report_id }}">
+                                <i class="material-icons">remove_red_eye</i>
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        {% endif %}
+    </table>
+{% endmacro %}
+{%  macro get_single_element(element) %}
+    {% if element %}
+        <p>{{ element }}</p>
+    {% else %}
+        <p>Unknown</p>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+    <h2 class="center">Information about {{ patient.surname }} {{ patient.name }}</h2>
+    <div class="divider"></div>
+    <div class="section">
+        <div class="card-panel">
+            <h4 class="center">Demographics Information</h4>
+            <div class="divider"></div>
+            <div class="patient-container container">
+                <div class="row">
+                    <div class="col s12 m6 l3">
+                        <b>Patient ID :</b>{{ get_single_element(patient._id) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Name : </b>{{ get_single_element(patient.name) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Surname : </b>{{ get_single_element(patient.surname) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Date of Birth : </b>{{ get_single_element(patient.dob) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Sex : </b>{{ get_single_element(patient.sex) }}
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="row">
+                    <div class="col s12 m6 l3">
+                        <b>Email : </b>{{ get_single_element(patient.email) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Phone : </b>{{ get_single_element(patient.phone_number) }}
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="row">
+                    <div class="col s12 m6 l3">
+                        <b>Address : </b>{{ get_single_element(patient.address) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Complement : </b>{{ get_single_element(patient.complement) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Zip Code : </b>{{ get_single_element(patient.zip_code) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>City : </b>{{ get_single_element(patient.city) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Country : </b>{{ get_single_element(patient.country) }}
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="row">
+                    <div class="col s12 m6 l3">
+                        <b>Referring Physician : </b>{{ get_single_element(patient.referring_physician) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="card-panel">
+            <h4 class="center">Scheduled Orders</h4>
+            <div class="divider"></div>
+            {{ show_order_informations(scheduled_orders, False) }}
+        </div>
+    </div>
+    <div class="section">
+        <div class="card-panel">
+            <h4 class="center">Past Orders</h4>
+            <div class="divider"></div>
+            {{ show_order_informations(past_orders, True) }}
+        </div>
+    </div>
+{% endblock %}

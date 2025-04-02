@@ -7,26 +7,19 @@
                 <div class="card">
                     <div class="card-content" style="padding: 20px">
                         <span class="card-title">New Order</span>
-                        <form method="POST" action="create_new_order">
+                        <form method="POST" action="{{ url_for('create_new_order', id=id) }}">
                         {{ form.csrf_token }}
                         {{ form.hidden_tag() }}
                             <div class="form-row">
-                                <div class="row">
-                                    <div class="input-field col s6">
-                                        {{ form.patient_name.label }}
-                                        {{ form.patient_name(class="validate") }}
-                                    </div>
-                                    <div class="input-field col s6">
+                                <div class="input-field">
                                         {{ form.ordering_physician.label }}
                                         {{ form.ordering_physician(class="validate") }}
-                                    </div>
                                 </div>
                                 <div class="input-field">
-                                    {{ form.imaging_modality(class="validate") }}
+                                    {{ form.imaging_modality() }}
                                 </div>
                                 <div class="input-field">
-                                    {{ form.exam_type.label }}
-                                    {{ form.exam_type(class="validate") }}
+                                    {{ form.procedure() }}
                                 </div>
                                 <div class="input-field">
                                     {{ form.add_note.label }}
@@ -34,14 +27,14 @@
                                 </div>
                                 <div class="row">
                                     <div class="input-field col s6">
-                                        {{ form.examination_date.date(class="validate datepicker") }}
+                                        {{ form.examination_date.date(class="validate exam-date datepicker") }}
                                         <label>Day of Examination</label>
                                         {% if form.examination_date.date.errors %}
                                             <span class="helper-text red-text">Wrong Date</span>
                                         {% endif %}
                                     </div>
                                     <div class="input-field col s6">
-                                        {{ form.examination_date.timing(class="validate timepicker") }}
+                                        {{ form.examination_date.timing(class="validate exam-time timepicker") }}
                                         <label>Hours of Examination</label>
                                         {% if form.examination_date.timing.errors %}
                                             <span class="helper-text red-text">Wrong Timing</span>
@@ -50,7 +43,7 @@
                                 </div>
                             </div>
                             <div class="card-action">
-                                {{ form.submit(class="btn waves-effect waves-light") }}
+                                <button class="btn waves-effect waves-light" type="submit" name="action">Submit</button>
                             </div>
                         </form>
                     </div>
@@ -58,28 +51,9 @@
             </div>
         </div>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            var datepick = document.querySelectorAll('.datepicker');
-            var datepickerInst = M.Datepicker.init(datepick, {
-                autoClose: true,
-                format: 'yyyy-mm-dd',
-            });
-            var timepick = document.querySelectorAll('.timepicker');
-            var timepickerInst = M.Timepicker.init(timepick, {
-                autoClose: true,
-                twelveHour: false,
-            });
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'toast' %}
-                            // Affiche un toast Materialize
-                            M.toast({html: '{{ message }}', classes: 'rounded'});
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        });
-    </script>
+
+
+    <!-- CUSTOM SCRIPT LOADING -->
+    <script type="text/javascript" src="../js/pickers.js"></script>
+    <script type="text/javascript" src="../js/dynamic_procedures.js"></script>
 {% endblock %}

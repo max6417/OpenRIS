@@ -2,8 +2,18 @@
 import uuid
 
 
-def generate_id():
+def generate_uuid():
     return str(uuid.uuid4())
+
+
+def generate_patient_id(patient_name: str, patient_dob: str, patient_sex: str):
+    patient_dob = patient_dob.join('-')
+    patient_name = patient_name.upper()
+    patient_sex = patient_sex.upper()
+    return f"{patient_name[:4]}{patient_dob}{patient_sex}"
+
+
+
 
 
 def check_examination_date_overlapping(current_examination_date, examination_dates):

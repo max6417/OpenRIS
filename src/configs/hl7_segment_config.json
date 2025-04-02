@@ -1,0 +1,385 @@
+{
+  "segments": {
+    "MSH": {
+      "fields": {
+        "MSH-1": {
+          "required": true,
+          "pattern": "^\\|$"
+        },
+        "MSH-2": {
+          "required": true,
+          "pattern": "^\\^~\\\&$"
+        },
+        "MSH-3": {
+          "required": false,
+          "components": {
+            "MSH-3.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]*"
+            },
+            "MSH-3.2": {
+              "required": false,
+              "pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "MSH-3.3": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "MSH-4": {
+          "required": false,
+          "components": {
+            "MSH-4.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]*"
+            },
+            "MSH-4.2": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "MSH-4.3": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "MSH-5": {
+          "required": false,
+          "components": {
+            "MSH-5.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]*"
+            },
+            "MSH-5.2": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "MSH-5.3": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "MSH-6": {
+          "required": false,
+          "components": {
+            "MSH-6.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]*"
+            },
+            "MSH-6.2": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "MSH-6.3": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "MSH-7": {
+          "required": true,
+          "pattern": "^[0-9]{12}$"
+        },
+        "MSH-9": {
+          "required": true,
+          "components": {
+            "MSH-9.1": {
+              "required": true,
+              "pattern": "^[A-Z]{3}$"
+            },
+            "MSH-9.2": {
+              "required": true,
+              "pattern": "^[A-Z]$"
+            },
+            "MSH-9.3": {
+              "required": true,
+              "pattern": "^[A-Z]{3}_[A-Z][0-9]{2}"
+            }
+          }
+        },
+        "MSH-10": {
+          "required": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "MSH-11": {
+          "required": true,
+          "components": {
+            "MSH-11.1": {
+              "required": true,
+              "pattern": "^A|D|T$"
+            },
+            "MSH-11.2": {
+              "required": false,
+              "pattern": "^A|I|R|T$"
+            }
+          }
+        },
+        "MSH-12": {
+          "required": true,
+          "pattern": "^2.8$"
+        }
+      }
+    },
+    "EVN": {
+      "fields": {
+        "EVN-2": {
+          "required": true,
+          "pattern": "^[0-9]{12}"
+        }
+      }
+    },
+    "PID": {
+      "fields": {
+        "PID-3": {
+          "required": true,
+          "components": {
+            "PID-3.1": {
+              "required": true,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "PID-3.5": {
+              "required": true,
+              "pattern": "^(ANON|PI)$"
+            }
+          }
+        },
+        "PID-5": {
+          "required": true,
+          "components": {
+            "PID-5.1": {
+              "required": true,
+              "pattern": "^[A-Z]+$"
+            },
+            "PID-5.2": {
+              "required": true,
+              "pattern": "^[A-Z]+$"
+            }
+          }
+        },
+        "PID-7": {
+          "required": true,
+          "pattern": "^[0-9]{8}$"
+        },
+        "PID-8": {
+          "required": true,
+          "pattern": "^(A|F|M|N|O|U)$"
+        }
+      }
+    },
+    "PV1": {
+      "required": true,
+      "fields": {
+        "PV1-2": {
+          "required": true,
+          "pattern": "^(B|C|E|I|N|O|P|R|U)$"
+        },
+        "PV1-7": {
+          "required": false,
+          "components": {
+            "PV1-7.1": {
+              "required": false,
+              "pattern": "^[0-9]{11}$"
+            },
+            "PV1-7.2": {
+              "required": false,
+              "pattern": "^[A-Z]+$"
+            },
+            "PV1-7.3": {
+              "required": false,
+              "pattern": "^[A-Z]+$"
+            }
+          }
+        },
+        "PV1-8": {
+          "required": false,
+          "components": {
+            "PV1-8.1": {
+              "required": false,
+              "pattern": "^[0-9]{11}$"
+            },
+            "PV1-8.2": {
+              "required": false,
+              "pattern": "^[A-Z]+$"
+            },
+            "PV1-8.3": {
+              "required": false,
+              "pattern": "^[A-Z]+$"
+            }
+          }
+        }
+      }
+    },
+    "ORC": {
+      "fields": {
+        "ORC-1": {
+          "required": true,
+          "pattern": "^(NW|OC|XO)$"
+        },
+        "ORC-2": {
+          "required": false,
+          "components": {
+            "ORC-2.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]$"
+            },
+            "ORC-2.3": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "ORC-2.4": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "ORC-3": {
+          "required": false,
+          "pattern": "^[0-9]{11}$"
+        },
+        "ORC-5": {
+          "required": false,
+          "pattern": "^(A|CA|CM|DC|ER|HD|IP|RP|SC)$"
+        },
+        "ORC-9": {
+          "required": false,
+          "pattern": "^[0-9]{12}$"
+        }
+      }
+    },
+    "OBR": {
+      "fields": {
+        "OBR-2": {
+          "required": false,
+          "components": {
+            "OBR-2.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]+$"
+            },
+            "OBR-2.3": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "OBR-2.4": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "OBR-3": {
+          "required": false,
+          "components": {
+            "OBR-3.1": {
+              "required": false,
+              "pattern": "^[A-Za-z]+(?: [A-Za-z]+)*$"
+            },
+            "OBR-3.3": {
+              "required": false,
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "OBR-3.4": {
+              "required": false,
+              "pattern": "^GUID$"
+            }
+          }
+        },
+        "OBR-4": {
+          "required": true,
+          "components": {
+            "OBR-4.1": {
+              "required": true,
+              "pattern": "^\\d{6,18}$"
+            },
+            "OBR-4.2": {
+              "required": true,
+              "pattern": "^[A-Za-z]+(?: [A-Za-z]+)*$"
+            },
+            "OBR-4.3": {
+              "required": true,
+              "pattern": "^SNM$"
+            }
+          }
+        },
+        "OBR-7": {
+          "required": false,
+          "pattern": "^[0-9]{12}$"
+        },
+        "OBR-22": {
+          "required": false,
+          "pattern": "^[0-9]{12}$"
+        },
+        "OBR-25": {
+          "required": false,
+          "pattern": "^(A|C|F|I|O|P|R|S|X|Y|Z)$"
+        }
+      }
+    },
+    "OBX": {
+      "fields": {
+        "OBX-2": {
+          "required": true,
+          "pattern": "^TX$"
+        },
+        "OBX-3": {
+          "required": true,
+          "components": {
+            "OBX-3.1": {
+              "required": true,
+              "pattern": "^\\d{6,18}$"
+            },
+            "OBX-3.2": {
+              "required": true,
+              "pattern": "^[A-Za-z]+(?: [A-Za-z]+)*$"
+            },
+            "OBX-3.3": {
+              "required": true,
+              "pattern": "^SNM$"
+            }
+          }
+        },
+        "OBX-5": {
+          "required": false,
+          "pattern": "^[A-Za-z]+(?: [A-Za-z]+)*$"
+        },
+        "OBX-11": {
+          "required": true,
+          "pattern": "^F$"
+        }
+      }
+    },
+    "IPC": {
+      "fields": {
+        "IPC-1": {
+          "required": true,
+          "pattern": "^[0-9]{16}$"
+        },
+        "IPC-2": {
+          "required": true,
+          "pattern": "\\d{6,16}$"
+        },
+        "IPC-3": {
+          "required": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "IPC-5": {
+          "required": true,
+          "components": {
+            "IPC-5.1": {
+              "required": true,
+              "pattern": "^[A-Z]+$"
+            },
+            "IPC-5.2": {
+              "required": true,
+              "pattern": "^[A-Za-z]+(?: [A-Za-z]+)*$"
+            },
+            "IPC-5.3": {
+              "required": true,
+              "pattern": "^DCM$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

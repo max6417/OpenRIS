@@ -1,0 +1,38 @@
+{
+  "messages": {
+    "ADT_A01": {
+      "MSH": {
+        "required": true
+      },
+      "EVN": {
+        "required": true
+      },
+      "PID": {
+        "required": true
+      },
+      "PV1": {
+        "required": true
+      }
+    },
+    "OMI_O23": {
+      "MSH": {
+        "required": true
+      },
+      "PID": {
+        "required": true
+      },
+      "ORC": {
+        "required": true
+      },
+      "OBR": {
+        "required": true
+      },
+      "OBX": {
+        "required": false
+      },
+      "IPC": {
+        "required": true
+      }
+    }
+  }
+}
