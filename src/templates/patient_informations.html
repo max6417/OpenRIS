@@ -105,19 +105,19 @@
                 <div class="divider"></div>
                 <div class="row">
                     <div class="col s12 m6 l3">
-                        <b>Address : </b>{{ get_single_element(patient.address) }}
+                        <b>Address : </b>{{ get_single_element(patient.address.address) }}
                     </div>
                     <div class="col s12 m6 l3">
-                        <b>Complement : </b>{{ get_single_element(patient.complement) }}
+                        <b>Complement : </b>{{ get_single_element(patient.address.complement) }}
                     </div>
                     <div class="col s12 m6 l3">
-                        <b>Zip Code : </b>{{ get_single_element(patient.zip_code) }}
+                        <b>Zip Code : </b>{{ get_single_element(patient.address.zip_code) }}
                     </div>
                     <div class="col s12 m6 l3">
-                        <b>City : </b>{{ get_single_element(patient.city) }}
+                        <b>City : </b>{{ get_single_element(patient.address.city) }}
                     </div>
                     <div class="col s12 m6 l3">
-                        <b>Country : </b>{{ get_single_element(patient.country) }}
+                        <b>Country : </b>{{ get_single_element(patient.address.country) }}
                     </div>
                 </div>
                 <div class="divider"></div>

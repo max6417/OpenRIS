@@ -24,7 +24,7 @@
                     <td>{{ order.examination_date.date }}</td>
                     <td>{{ order.examination_date.start_time }} - {{ order.examination_date.end_time }}</td>
                     <td>
-                        <a class="btn-floating btn-small red" href="/remove_order/{{ page_name }}/{{ order._id }}">
+                        <a class="btn-floating btn-small red" href="/remove_order/{{ order._id }}">
                             <i class="material-icons">remove</i>
                         </a>
                         {% if page_name == 'workflow-today' %}

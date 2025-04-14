@@ -2,10 +2,13 @@ import flask
 import hl7_code
 from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from flask_material import Material
+
+from src.utils.MongoDBClient import MongoDBClient
 from utils.checker import *
 from utils.MongoDBClient import *
 from utils import utils
 from elements.Forms import *
+import pyorthanc
 
 
 app = flask.Flask(__name__, static_folder="js")
@@ -16,8 +19,12 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 client = MongoDBClient.MongoDBClient()
 
+orthanc_client = pyorthanc.Orthanc("http://localhost:8042")    # Connect to Orthanc service from RIS to enable communication
+if not orthanc_client:
+    print("Cannot find Orthanc server")
+modalities = orthanc_client.get_modalities()
 
-@app.route("/")
+@app.route("/openris")
 def index():
     return flask.redirect("/workflow/all")
 
@@ -50,7 +57,7 @@ def patients():
 
 @app.route("/patient_information/<id>")
 def patient_information(id):
-    patient = client.get_document('patients', {'_id': int(id)})    # TODO - Change the id type to str
+    patient = client.get_document('patients', {'_id': id})
     scheduled_orders = client.get_documents('orders', {'patient_id': id, 'is_active': True})
     past_orders = client.get_documents('orders', {'patient_id': id, 'is_active': False})
     return flask.render_template('patient_informations.html', patient=patient, scheduled_orders=scheduled_orders, past_orders=past_orders)
@@ -58,13 +65,12 @@ def patient_information(id):
 
 @app.route("/edit_profile/<id>", methods=["GET", "POST"])
 def edit_profile(id):
-        # TODO - Change the id type to str
-    patient = client.get_document('patients', {'_id': int(id)})
+    patient = client.get_document('patients', {'_id': id})
     PatientDemForm = PatientDemographics()
     if request.method == "POST" and PatientDemForm.validate():
         client.update_document(
             'patients',
-            int(id),
+            id,
             {
                 'name': PatientDemForm.patient_name.data.upper(),
                 'surname': PatientDemForm.patient_surname.data.upper(),
@@ -125,15 +131,15 @@ def receive_hl7_message():
 @app.route("/create_new_order/<id>", methods=["GET", "POST"])
 def create_new_order(id):
     form = Order()
-    form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in client.get_documents('procedures', {'modality': form.imaging_modality.choices[0][1]})]
-    print(form.errors)
-    if request.method == "POST" and form.validate():
-        procedure = client.get_document("procedures", {"_id": int(form.procedure.data)})
-        modality = client.get_document("modalities", {'_id': int(form.imaging_modality.data)})
+    form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in client.get_documents('procedures', {'modality': form.imaging_modality.choices[0][1].split('_')[0]})]
+    if request.method == "POST" and form.examination_date.form.validate() and form.validate_ordering_physician(form.ordering_physician):
+        procedure = client.get_document("procedures", {"_id": form.procedure.data})
+        #modality = client.get_document("modalities", {'_id': int(form.imaging_modality.data)})
+        modality = form.imaging_modality.data
         examination_date = {
             "date": str(form.examination_date.date.data),
             "start_time": (datetime.datetime.strptime(str(form.examination_date.timing.data), "%H:%M:%S")).strftime("%H:%M:%S"),
-            "end_time": (datetime.datetime.strptime(str(form.examination_date.timing.data), "%H:%M:%S") + datetime.timedelta(minutes=procedure['duration'])).strftime("%H:%M:%S")
+            "end_time": (datetime.datetime.strptime(str(form.examination_date.timing.data), "%H:%M:%S") + datetime.timedelta(minutes=int(procedure['duration']))).strftime("%H:%M:%S")
         }
         ## TIMING CONFLICT DETECTION ##
         patient_conflict = list(client.get_documents("orders", {
@@ -146,7 +152,7 @@ def create_new_order(id):
             return render_template("create_order.html", form=form, id=id)
 
         modality_conflict = list(client.get_documents("orders", {
-            "modality": modality['name'],
+            "station_aet": modality,
             "examination_date.date": examination_date["date"],
             "is_active": True
         }))
@@ -159,12 +165,13 @@ def create_new_order(id):
         new_order = {
             "_id": utils.generate_uuid(),
             "patient_id": str(id),
-            "modality": modality['name'],
+            "modality": modality.split('_')[0],
+            "station_aet": modality,
             "procedure": procedure['name'],
             "note": form.add_note.data,
             "ordering_physician": form.ordering_physician.data,
             "examination_date": examination_date,
-            "status": "scheduled",
+            "status": "SCHEDULED",
             "is_active": True,
         }
         print(new_order)
@@ -172,9 +179,12 @@ def create_new_order(id):
         if not sended:
             return flask.render_template("create_order.html", form=form, id=id)
         flash("New Order Placed !", "toast")
-        return flask.redirect('/')
+        return flask.redirect(url_for('index'))
         # Treat the order and maybe redirecting to workflow page -> TODO
     elif request.method == "POST":
+        form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in
+                                  client.get_documents('procedures', {
+                                      'modality': form.imaging_modality.data.split('_')[0]})]
         flash("Error in form", "error")
     return flask.render_template("create_order.html", form=form, id=id)
 
@@ -182,47 +192,55 @@ def create_new_order(id):
 @app.route("/workflow/<filter>")
 def workflow(filter):
     # TODO - Implement this page + server logic
+    messages = flask.get_flashed_messages(with_categories=True)
+    print(messages)
     if filter == "today":
         current_date = datetime.datetime.today().date()
         orders = client.get_documents('orders', {'examination_date.date': str(current_date), 'is_active': True})
         for order in orders:
-            patient = client.get_document('patients', {'_id': int(order['patient_id'])})
+            patient = client.get_document('patients', {'_id': order['patient_id']})
             order['patient_name'] = patient['name']
             order['patient_surname'] = patient['surname']
-        return flask.render_template("workflow.html", orders=orders, page_name='workflow-today', can_worklist=True)
+        return flask.render_template("workflow.html", orders=orders, page_name='workflow-today', can_worklist=True, flash_msg=messages)
     elif filter == "all":
         orders = client.get_documents('orders', {'is_active': True})
         for order in orders:
-            patient = client.get_document('patients', {'_id': int(order['patient_id'])})
+            patient = client.get_document('patients', {'_id': order['patient_id']})
             order['patient_name'] = patient['name']
             order['patient_surname'] = patient['surname']
-        return flask.render_template("workflow.html", orders=orders, page_name='workflow-all', can_worklist=False)
+        return flask.render_template("workflow.html", orders=orders, page_name='workflow-all', can_worklist=False, flash_msg=messages)
     else:
         pass
-    return flask.redirect("/")
+    return flask.redirect("/openris")
 
 
 @app.route("/report")
 def report():
     # TODO - Implement this page + server logic
-    return flask.redirect("/")
+    return flask.redirect("/openris")
 
 
-@app.route("/get_procedures/<modality>")
+@app.route("/get_procedures/<modality>")    # TODO - Change this function to take new modality logic into account
 def get_procedures(modality):
-    modality_name = client.get_document('modalities', {'_id': int(modality)})['name']
+    modality_name = modality.split('_')[0]
     procedures = client.get_documents("procedures", {"modality": modality_name})
     return jsonify([{"_id": option['_id'], 'name': option['name']} for option in procedures])
 
 
 @app.route("/remove_order/<order_id>")
 def remove_order(order_id):
-
-    pass
+    # TODO - Maybe use fond_one_and_delete to get the deleted document from DB
+    deleted_order = client.delete_document("orders", order_id)    # Return a DeleteResult (status + elem deleted)
+    if deleted_order.acknowledged and deleted_order.raw_result['n']:
+        flash(f"Order {order_id} removed", "toast")
+    else:
+        flash(f"Error when deleting {order_id} order", "error")
+    return flask.redirect("/workflow/all")
 
 
 @app.route("/create_worklist/<order_id>")
 def create_worklist(order_id):
+    # TODO : create the element to be sent in orthanc python script!
     pass
 
 @app.route('/get_order_info/<order_id>')

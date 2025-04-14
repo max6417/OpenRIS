@@ -5,10 +5,16 @@ from wtforms.fields import TimeField, DateField, TelField, EmailField
 import datetime
 from html import escape
 import re
+import pyorthanc
 from utils import MongoDBClient
 
 client = MongoDBClient.MongoDBClient()
+orthanc_client = pyorthanc.Orthanc("http://localhost:8042")
 
+
+MODALITIES = set(orthanc_client.get_modalities())
+MODALITIES.discard("horos")
+MODALITIES.discard("findscu")
 
 class BaseForm(FlaskForm):
     class Meta:
@@ -40,7 +46,7 @@ class Order(BaseForm):
     # Imaging Request Information
     imaging_modality = SelectField(
         "Modality",
-        choices=[(modality['_id'], modality['name']) for modality in client.list_documents("modalities")],
+        choices=[(modality, modality) for modality in MODALITIES],
         render_kw={"style": "display:block"}
     )
     procedure = SelectField(
@@ -53,16 +59,9 @@ class Order(BaseForm):
 
     def validate_ordering_physician(self, field):
         if not bool(re.fullmatch(r'^[a-zA-Z\s\-\']+$', field.data)):
-            raise ValidationError("Name of physician not conform")
-
-    def validate_imaging_modality(self, field):
-        pass
-
-    def validate_procedure(self, field):
-        pass
-
-    def validate_add_note(self, field):
-        pass
+            #raise ValidationError("Name of physician not conform")
+            return False
+        return True
 
 
 class PatientSearchForm(BaseForm):

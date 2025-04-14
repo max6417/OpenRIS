@@ -33,16 +33,15 @@
     </body>
     <!-- ERROR MESSAGE MANAGEMENT -->
     <script>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    {% if message == 'toast' %}
-                        M.toast({html: '{{ message }}', classes: 'rounded'});
-                    {% elif category == 'error' %}
-                        M.toast({html: '{{ message }}', classes: 'rounded red'});
-                    {% endif %}
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        {% if flash_msg %}
+            {% for category, message in flash_msg %}
+                {% if category == 'toast' %}
+                    M.toast({html: '{{ message }}', classes: 'rounded'});
+                {% elif category == 'error' %}
+                    M.toast({html: '{{ message }}', classes: 'rounded red'});
+                {% endif %}
+            {% endfor %}
+        {% endif %}
     </script>
+
 </html>
