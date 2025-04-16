@@ -3,7 +3,6 @@ from wtforms import StringField, SelectField, TextAreaField, DateField, FormFiel
 from wtforms.validators import ValidationError, DataRequired, Optional
 from wtforms.fields import TimeField, DateField, TelField, EmailField
 import datetime
-from html import escape
 import re
 import pyorthanc
 from utils import MongoDBClient
@@ -15,6 +14,7 @@ orthanc_client = pyorthanc.Orthanc("http://localhost:8042")
 MODALITIES = set(orthanc_client.get_modalities())
 MODALITIES.discard("horos")
 MODALITIES.discard("findscu")
+MODALITIES.discard("ORTHANC")
 
 class BaseForm(FlaskForm):
     class Meta:
