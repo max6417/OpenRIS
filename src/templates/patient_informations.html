@@ -1,16 +1,18 @@
 {% extends 'index.html' %}
 {% macro show_order_informations(orders, past) %}
-    <table>
+    <table id="{% if not past %}scheduled-table{% else %}past-table{% endif %}" class="highlight custom-table-pointer">
         {% if not past %}
             <thead>
                 <tr>
                     <th>id</th>
-                    <th>Procedure</th>
-                    <th>Modality</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
+                    <th onclick="tableSorting('scheduled-table', 1)">Procedure</th>
+                    <th onclick="tableSorting('scheduled-table', 2)">Modality</th>
+                    <th onclick="tableSorting('scheduled-table', 3)">Status</th>
+                    <th onclick="tableSorting('scheduled-table', 4)">Date</th>
+                    <th onclick="tableSorting('scheduled-table', 5)">Scheduled Start Time</th>
+                    <th onclick="tableSorting('scheduled-table', 6)">Scheduled End Time</th>
+                    <th onclick="tableSorting('scheduled-table', 7)">Executive Start Time</th>
+                    <th onclick="tableSorting('scheduled-table', 8)">Executive End Time</th>
                 </tr>
             </thead>
             <tbody>
@@ -23,6 +25,8 @@
                         <td>{{ order.examination_date.date }}</td>
                         <td>{{ order.examination_date.start_time }}</td>
                         <td>{{ order.examination_date.end_time }}</td>
+                        <td>{% if order['executive-start-time'] %}{{ order['executive-start-time'] }}{% else %}-{% endif %}</td>
+                        <td>{% if order['executive-end-time'] %}{{ order['executive-end-time'] }}{% else %}-{% endif %}</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -30,12 +34,14 @@
             <thead>
                 <tr>
                     <th>id</th>
-                    <th>Procedure</th>
-                    <th>Modality</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
+                    <th onclick="tableSorting('past-table', 1)">Procedure</th>
+                    <th onclick="tableSorting('past-table', 2)">Modality</th>
+                    <th onclick="tableSorting('past-table', 3)">Status</th>
+                    <th onclick="tableSorting('past-table', 4)">Date</th>
+                    <th onclick="tableSorting('past-table', 5)">Start Time</th>
+                    <th onclick="tableSorting('past-table', 6)">End Time</th>
+                    <th onclick="tableSorting('scheduled-table', 7)">Executive Start Time</th>
+                    <th onclick="tableSorting('scheduled-table', 8)">Executive End Time</th>
                     <th>Action(s)</th>
                 </tr>
             </thead>
@@ -49,6 +55,8 @@
                         <td>{{ order.examination_date.date }}</td>
                         <td>{{ order.examination_date.start_time }}</td>
                         <td>{{ order.examination_date.end_time }}</td>
+                        <td>{% if order['executive-start-time'] %}{{ order['executive-start-time'] }}{% else %}-{% endif %}</td>
+                        <td>{% if order['executive-end-time'] %}{{ order['executive-end-time'] }}{% else %}-{% endif %}</td>
                         <td>
                             <a class="btn-floating btn-small grey" href="view_report/{{ order.report_id }}">
                                 <i class="material-icons">remove_red_eye</i>
@@ -123,7 +131,7 @@
                 <div class="divider"></div>
                 <div class="row">
                     <div class="col s12 m6 l3">
-                        <b>Referring Physician : </b>{{ get_single_element(patient.referring_physician) }}
+                        <b>Referring Physician : </b>{{ get_single_element(patient.referring_physician['_id']) }} {{ get_single_element(patient.referring_physician['name']) }} {{ get_single_element(patient.referring_physician['surname']) }}
                     </div>
                 </div>
             </div>
@@ -143,4 +151,10 @@
             {{ show_order_informations(past_orders, True) }}
         </div>
     </div>
+    <script type="text/javascript" src="../js/tab_sorting.js"></script>
+    <style>
+    .custom-table-pointer th[onclick] {
+            cursor: pointer;
+        }
+    </style>
 {% endblock %}

@@ -1,15 +1,16 @@
 {% extends 'index.html' %}
 {% block content %}
-    <table>
+    <table id="workflow-table" class="highlight custom-table-pointer">
         <thead>
             <tr>
                 <th>id</th>
-                <th>Patient</th>
-                <th>Procedure</th>
-                <th>Modality</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Timing</th>
+                <th onclick="tableSorting('workflow-table', 1)">Patient</th>
+                <th onclick="tableSorting('workflow-table', 2)">Procedure</th>
+                <th onclick="tableSorting('workflow-table', 3)">Modality</th>
+                <th onclick="tableSorting('workflow-table', 4)">Status</th>
+                <th onclick="tableSorting('workflow-table', 5)">Date</th>
+                <th onclick="tableSorting('workflow-table', 6)">Scheduled Timing</th>
+                <th onclick="tableSorting('workflow-table', 7)">Execution Timing</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -23,11 +24,17 @@
                     <td>{{ order.status }}</td>
                     <td>{{ order.examination_date.date }}</td>
                     <td>{{ order.examination_date.start_time }} - {{ order.examination_date.end_time }}</td>
+                    <td>{% if order['executive-start-time'] %}{{ order['executive-start-time'] }}{% else %} / {% endif %} - {% if order['executive-end-time'] %}{{ order['executive-end-time'] }}{% else %} / {% endif %}</td>
                     <td>
                         {% if order.status == "SCHEDULED" %}
                             <a class="btn-floating btn-small red" href="/remove_order/{{ order._id }}">
                                 <i class="material-icons">remove</i>
                             </a>
+                            {% if order.examination_date.date == curr_date %}
+                                <a class="btn-floating btn-small grey darken-1" href="/create_worklist/{{ order._id }}">
+                                    <i class="material-icons">assignment</i>
+                                </a>
+                            {% endif %}
                         {% elif order.status == "FINISHED" %}
                             <a href="/create-report/{{ order._id }}" class="btn-floating btn-small grey">
                                 <i class="material-icons">assignment_late</i>
@@ -38,13 +45,10 @@
             {% endfor %}
         </tbody>
     </table>
-
-    <!-- MODAL DELETE -->
-    <div id="modal-delete" class="modal">
-        <div class="modal-content">
-
-        </div>
-    </div>
-    <!-- MODAL WORKLIST -->
-
+    <script type="text/javascript" src="../js/tab_sorting.js"></script>
+    <style>
+        .custom-table-pointer th[onclick] {
+            cursor: pointer;
+        }
+    </style>
 {% endblock %}

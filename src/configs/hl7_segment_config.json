@@ -8,7 +8,7 @@
         },
         "MSH-2": {
           "required": true,
-          "pattern": "^\\^~\\\&$"
+          "pattern": "^\\^~\\&$"
         },
         "MSH-3": {
           "required": false,

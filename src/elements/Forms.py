@@ -89,7 +89,7 @@ class PatientDemographics(BaseForm):
         - Phone Number
         - Email
         - Address + Code Postal + Complement + Country + City
-        - Referring Physician
+        - Referring Physician : id + name + surname
     """
     patient_name = StringField("Patient Name", validators=[DataRequired()])
     patient_surname = StringField("Patient Surname", validators=[DataRequired()])
@@ -106,7 +106,9 @@ class PatientDemographics(BaseForm):
     patient_zip_code = StringField("Zip Code", validators=[Optional()])
     patient_city = StringField("City", validators=[Optional()])
     patient_country = StringField("Country", validators=[Optional()])
-    patient_referring_physician = StringField("Referring Physician", validators=[Optional()])
+    patient_referring_physician_id = StringField("Referring Physician", validators=[Optional()])
+    patient_referring_physician_name = StringField("Referring Physician Name", validators=[Optional()])
+    patient_referring_physician_surname = StringField("Referring Physician Surname", validators=[Optional()])
 
     def validate_patient_name(self, field):
         if not bool(re.fullmatch(r'^[a-zA-Z\s\-\']+$', field.data)):

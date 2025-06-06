@@ -27,6 +27,7 @@
         <ul id="workflow-dropdown" class="dropdown-content">
             <li class="{% if page_name == 'workflow-all' %}active{% endif %}"><a href="/workflow/all">All</a></li>
             <li class="{% if page_name == 'workflow-today' %}active{% endif %}"><a href="/workflow/today">Today</a></li>
+            <li class="{% if page_name == 'workflow-reporting' %}active {% endif %}"><a href="/workflow/reporting">To Report</a></li>
         </ul>
         {% block content %}
         {% endblock %}

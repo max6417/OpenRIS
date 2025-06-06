@@ -13,8 +13,6 @@ def extract_information(message: hl7.Message, segment: str, segment_num=1, field
         return message.extract_field(segment, segment_num, field_num, repeat_num, component_num, subcomponent_num)
     except KeyError:
         return None
-    finally:
-        return None
 
 
 class PatternValidator:

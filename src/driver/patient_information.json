@@ -1,0 +1,22 @@
+{
+  "name": "YUNJIN",
+  "surname": "HUH",
+  "dob": "2001-10-08",
+  "sex": "F",
+  "ethnicity": "A",
+  "address": {
+    "address": "300 FICTIVE STREET",
+    "city": "JEJU",
+    "country": "UNITED STATES"
+  },
+  "home-phone": "0490226655",
+  "marital-status": "S",
+  "ssn": "0123456789",
+  "patient-class": "I",
+  "admission-type": "R",
+  "referring-physician": {
+    "id": "12340",
+    "name": "PHYSI",
+    "surname": "ANOTHER"
+  }
+}

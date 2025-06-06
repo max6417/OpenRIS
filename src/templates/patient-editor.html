@@ -67,8 +67,16 @@
                                </div>
                                <div class="row">
                                    <div class="input-field col s6">
-                                       {{ form.patient_referring_physician.label }}
-                                       {{ form.patient_referring_physician() }}
+                                       {{ form.patient_referring_physician_id.label }}
+                                       {{ form.patient_referring_physician_id() }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_referring_physician_name.label }}
+                                       {{ form.patient_referring_physician_name() }}
+                                   </div>
+                                   <div class="input-field col s6">
+                                       {{ form.patient_referring_physician_surname.label }}
+                                       {{ form.patient_referring_physician_surname() }}
                                    </div>
                                </div>
                            </div>
