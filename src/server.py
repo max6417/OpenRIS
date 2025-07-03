@@ -183,7 +183,7 @@ def receive_hl7_message():
                         '_id': new_patient_id,
                         'name': extract_information(message, "PID", field_num=5, component_num=1) if extract_information(message, "PID", field_num=5, component_num=1) else "",
                         'surname': extract_information(message, "PID", field_num=5, component_num=2) if extract_information(message, "PID", field_num=5, component_num=2) else "",
-                        'dob': f"{extract_information(message, "PID", field_num=7)[:3]}-{extract_information(message, "PID", field_num=7)[3:5]}-{extract_information(message, "PID", field_num=7)[5:7]}" if extract_information(message, "PID", field_num=7) else "",
+                        'dob': f"{extract_information(message, "PID", field_num=7)[:4]}-{extract_information(message, "PID", field_num=7)[4:6]}-{extract_information(message, "PID", field_num=7)[6:8]}" if extract_information(message, "PID", field_num=7) else "",
                         'sex': extract_information(message, "PID", field_num=8) if extract_information(message, "PID", field_num=8) else "U",
                         'phone_number': extract_information(message, "PID", field_num=13) if extract_information(message, "PID", field_num=13) else "",
                         'email': extract_information(message, "PID", field_num=14) if extract_information(message, "PID", field_num=14) else "",

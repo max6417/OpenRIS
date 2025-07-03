@@ -84,6 +84,7 @@
             <h4 class="center">Demographics Information</h4>
             <div class="divider"></div>
             <div class="patient-container container">
+                <h5>Patient Infos</h5>
                 <div class="row">
                     <div class="col s12 m6 l3">
                         <b>Patient ID :</b>{{ get_single_element(patient._id) }}
@@ -102,6 +103,7 @@
                     </div>
                 </div>
                 <div class="divider"></div>
+                <h5>Contact</h5>
                 <div class="row">
                     <div class="col s12 m6 l3">
                         <b>Email : </b>{{ get_single_element(patient.email) }}
@@ -111,6 +113,7 @@
                     </div>
                 </div>
                 <div class="divider"></div>
+                <h5>Address</h5>
                 <div class="row">
                     <div class="col s12 m6 l3">
                         <b>Address : </b>{{ get_single_element(patient.address.address) }}
@@ -129,9 +132,16 @@
                     </div>
                 </div>
                 <div class="divider"></div>
+                <h5>Referring Physician</h5>
                 <div class="row">
                     <div class="col s12 m6 l3">
-                        <b>Referring Physician : </b>{{ get_single_element(patient.referring_physician['_id']) }} {{ get_single_element(patient.referring_physician['name']) }} {{ get_single_element(patient.referring_physician['surname']) }}
+                        <b>Id : </b>{{ get_single_element(patient.referring_physician['_id']) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Name : </b> {{ get_single_element(patient.referring_physician['name']) }}
+                    </div>
+                    <div class="col s12 m6 l3">
+                        <b>Surname : </b>{{ get_single_element(patient.referring_physician['surname']) }}
                     </div>
                 </div>
             </div>
