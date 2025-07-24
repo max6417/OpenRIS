@@ -1,0 +1,93 @@
+{% extends 'index.html' %}
+
+
+{% block content %}
+    <h2 class="center"> Create Report for Order {{ info.order._id }}</h2>
+    <div class="divider"></div>
+    <div class="section" style="padding-left: 15%;padding-right: 15%">
+        <div class="card-panel">
+            <h5 class="center">Patient Information</h5>
+            <div class="row">
+                <div class="col m4">
+                    <p><b>ID : </b>{{ info.patient._id }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Name : </b>{{ info.patient.name }}
+                </div>
+                <div class="col m4">
+                    <p><b>Surname : </b>{{ info.patient.surname }}</p>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <h5 class="center">Order Placer</h5>
+            <div class="row">
+                <div class="col m4">
+                    <p><b>ID : </b>{{ info.order.placer_physician._id }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Name : </b>{{ info.order.placer_physician.name }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Surname :</b>{{ info.order.placer_physician.surname }}</p>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <h5 class="center">Order Information</h5>
+            <div class="row">
+                <div class="col m6">
+                    <p><b>Procedure : </b>{{ info.order.procedure }}</p>
+                </div>
+                <div class="col m6">
+                    <p><b>Modality : </b>{{ info.order.modality }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col m1">
+                    <p><b>Note : </b>{{ info.order.note }}</p>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <h5 class="center">Report</h5>
+            <form id="form-new-report" method="POST" action="{{ url_for('create_report', id=info.order._id) }}">
+                <div class="form-row">
+                    <div class="row">
+                        <div class="col m6">
+                            <div class="input-field">
+                                {{ form.name.label }}
+                                {{ form.name(class="validate") }}
+                            </div>
+                        </div>
+                        <div class="col m6">
+                            <div class="input-field">
+                                {{ form.surname.label }}
+                                {{ form.surname(class="validate") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            {{ form.findings.label }}
+                            {{ form.findings() }}
+                            <p><span id="nb-findings-words">0</span>/500</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            {{ form.impressions.label }}
+                            {{ form.impressions() }}
+                            <p><span id="nb-impressions-words">0</span>/500</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            {{ form.recommendations.label }}
+                            {{ form.recommendations() }}
+                        </div>
+                    </div>
+                </div>
+                <button id="create-new-report-button" class="btn waves-effect waves-light" type="submit" name="action" onclick="lenChecker(500, 'impressions')">Create</button>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript" src="../js/report_impressions_len_checker.js"></script>
+{% endblock %}

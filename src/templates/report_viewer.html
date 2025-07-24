@@ -1,0 +1,111 @@
+{% extends 'index.html' %}
+<!-- TODO - Implement function for the table displaying resume of report -->
+{% macro show_report_resume(processed_annotations, is_findings) %}
+    <table id="{% if not is_findings %}impressions-resumed-table{% else %}findings-resumed-table{% endif %}" class="highlight custom-table-pointer">
+        <thead>
+            <tr>
+                <th onclick="tableSorting('{% if not is_findings %}impressions-resumed-table{% else %}findings-resumed-table{% endif %}', 0)">Observation</th>
+                <th onclick="tableSorting('{% if not is_findings %}impressions-resumed-table{% else %}findings-resumed-table{% endif %}', 1)">Location</th>
+                <th onclick="tableSorting('{% if not is_findings %}impressions-resumed-table{% else %}findings-resumed-table{% endif %}', 2)">Tags</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for annotation in processed_annotations %}
+                <tr>
+                    <td>{{ annotation.get("observation", "unknown") }}</td>
+                    <td>{% if annotation.get("located_at", []) == [] %}unknown{% else %}{{ "; ".join(annotation["located_at"]) }}{% endif %}</td>
+                    <td>{% if annotation["tags"].endswith("present") %}present{% elif annotation["tags"].endswith("absent") %}absent{% else %}uncertain{% endif %}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+
+{% block content %}
+    <h2 class="center">Report {{ info.order._id }}</h2>
+    <div class="divider"></div>
+    <div class="section" style="padding-left: 15%;padding-right: 15%">
+        <div class="card-panel">
+            <h4 class="center">Patient Information</h4>
+            <div class="divider"></div>
+            <div class="row">
+                <div class="col m4">
+                    <p><b>ID: </b>{{ info.patient._id }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Name : </b>{{ info.patient.name }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Surname : </b>{{ info.patient.surname }}</p>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <h5 class="center">Order Information</h5>
+            <div class="row">
+                <div class="col m4">
+                    <p><b>ID : </b>{{ info.order._id }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Procedure : </b>{{ info.order.procedure }}</p>
+                </div>
+                <div class="col m4">
+                    <p><b>Modality : </b>{{ info.order.modality }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col m1">
+                    <p><b>Note : </b>{{ info.order.note }}</p>
+                </div>
+            </div>
+            <h4 class="center">Report Summary (in progress)</h4>
+            <div class="divider"></div>
+            <div class="row">
+                <div class="col m6">
+                    <div class="card-panel">
+                        <h6>Findings</h6>
+                        {{ show_report_resume(info.report.labels.findings, True) }}
+                    </div>
+
+                </div>
+                <div class="col m6">
+                    <div class="card-panel">
+                        <h6>Impressions</h6>
+                        {{ show_report_resume(info.report.labels.impressions, False) }}
+                    </div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <h5 class="center">Findings</h5>
+            <div class="divider"></div>
+            <div class="row">
+                <div class="col m12">
+                    <p>{{ info.report["findings-text"] }}</p>
+                </div>
+            </div>
+            <h5 class="center">Impressions</h5>
+            <div class="divider"></div>
+            <div class="col m12">
+                <p>{{ info.report["impressions-text"] }}</p>
+            </div>
+            <h5 class="center">Recommendations</h5>
+            <div class="divider"></div>
+            <div class="col m12">
+                <p>{{ info.report["recommendations"] }}</p>
+            </div>
+            <h5 class="center">Filler Radiologist</h5>
+            <div class="divider"></div>
+            <div class="row">
+                <div class="col m6">
+                    <p><b>Name : </b>{{ info.report.radiologist.name }}</p>
+                </div>
+                <div class="col m6">
+                    <p><b>Surname : </b>{{ info.report.radiologist.surname }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+<script type="text/javascript" src="../js/tab_sorting.js"></script>
