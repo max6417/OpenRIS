@@ -1,0 +1,67 @@
+{% extends 'index.html' %}
+
+
+{% macro summarize_report(report) %}
+    <tr>
+        <td>{{ report._id }}</td>
+        <td>{{ report.order_id }}</td>
+        <td>{{ report.patient_id }}</td>
+        <td>{{ report.date }}</td>
+        <td>
+            <a class="btn-floating btn-small blue" href="/view-report/{{ report.patient_id }}/{{ report.order_id }}">
+                <i class="material-icons">remove_red_eye</i>
+            </a>
+        </td>
+    </tr>
+{% endmacro %}
+
+{% block content %}
+    <div class="section">
+        <div class="card-panel">
+            <h5>Search</h5>
+            <form method="POST" action="/search-reports">
+                <div class="row">
+                    <div class="input-field col m4">
+                        {{ search_form.section_find(class="validate") }}
+                    </div>
+                    <div class="input-field col m4">
+                        {{ search_form.observation.label }}
+                        {{ search_form.observation(class="validate") }}
+                    </div>
+                    <div class="input-field col m4">
+                        {{ search_form.select_presence(class="validate") }}
+                    </div>
+                </div>
+                <div class="row">
+                    <button class="btn waves-effect waves-light" type="submit" name="action">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="section">
+        <div class="card-panel">
+            <h5>Reports List</h5>
+            <table id="reports-table" class="highlight custom-table-pointer">
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>Order id</th>
+                        <th>Patient id</th>
+                        <th onclick="tableSorting('reports-table', 3)">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                        {{ summarize_report(report) }}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script type="text/javascript" src="../js/tab_sorting.js"></script>
+    <style>
+        .custom-table-pointer th[onclick] {
+            cursor: pointer;
+        }
+    </style>
+{% endblock %}
