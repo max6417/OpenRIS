@@ -1,56 +1,77 @@
 import flask
-import hl7_code
-from flask import request, render_template, url_for, flash, jsonify
+from pydicom.uid import generate_uid
+
+import src.hl7_code.handlers as handlers
+from pymongo.errors import WriteError
+
+from flask import request, flash, jsonify, make_response, Response
 from flask_material import Material
 
-from src.hl7_code.message_constructor import HL7MessageBuilder
-from utils.checker import *
-from utils.MongoDBClient import *
+from src.hl7_code.message_constructor import construct_adt_a08, construct_omi_023, construct_orm_o01, \
+    construct_oru_r01
+from src.utils.utils import generate_uuid
 from utils import utils
 from elements.Forms import *
 from hl7_code.message_validators import *
-from pydicom.uid import generate_uid
+from src.NER.NER import *
 import pyorthanc
 import requests
-import logging
+import src.log as log
 
+import config
+from utils.scheduler import *
 
-ORTHANC_SERVER = "http://localhost:8042/"
+# TODO : Write the GIT page + function static + documentation + test the code
+# TODO : Publish the code in public + choose a license Open Source
 
-
-APP_LOGGER = logging.getLogger("app_logs")
-
-
-def hl7_log(message: hl7.Message, direction: str):
-    curr_date = datetime.datetime.now().strftime("%Y-%m%dT%H:%M:%S")
-    APP_LOGGER.info(f"{curr_date} - {direction} - {str(message)}")
-
-
-
-# TODO - A entire refactor of the LOG system AND the HL7 messages
+ner_model = NERModel()
+hl7_logger = log.HL7LogHandler()
+app_logger = log.AppLogHandler()
 
 
 app = flask.Flask(__name__, static_folder="js")
 Material(app)
-app.config['SECRET_KEY'] = "ADMIN"
+app.config['SECRET_KEY'] = config.SECRET_KEY
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 
-client = MongoDBClient.MongoDBClient()
+client = MongoDBClient()
+scheduler = Scheduler(config.D_RANGE, datetime.datetime.strptime(config.SHIFT_START, "%H:%M").time(), datetime.datetime.strptime(config.SHIFT_END, "%H:%M").time())
+
+pattern_val = PatternValidator(config.MESSAGE_HL7_DIR, config.SEGMENT_HL7_DIR)
 
 
-pattern_val = PatternValidator("configs/hl7_messages_config.json", "configs/hl7_segment_config.json")
-
-
-orthanc_client = pyorthanc.Orthanc(ORTHANC_SERVER)    # Connect to Orthanc service from RIS to enable communication
+orthanc_client = pyorthanc.Orthanc(config.ORTHANC_SERVER)    # Connect to Orthanc service from RIS to enable communication
 if not orthanc_client:
-    print("Cannot find Orthanc server")
+    app_logger.add_error_log("Orthanc server not available")
 modalities = orthanc_client.get_modalities()
 
 
+def send_hl7(message: hl7.Message) -> bool:
+    """
+    Contains the logic to send HL7 messages to others applications except Orthanc which has a specific route
+
+    Currently, there isn't any logic here and this function should change later, all the messages are logged in order
+    to simulate the sending except for the OMI message to Orthanc which is really sent
+    """
+    hl7_logger.add_log("OUT", str(message))
+    if message.extract_field("MSH", field_num=9, component_num=1) == "OMI" and message.extract_field("MSH", field_num=5) == config.ORTHANC_AET:
+        resp = requests.post(
+            f"{config.ORTHANC_SERVER}/mwl/create_worklist",
+            data=str(message),
+            headers={"Content-Type": "application/hl7"}
+        )
+        resp_data = resp.content.decode("utf-8")
+        hl7_logger.add_log("IN", str(hl7.parse(resp_data)))
+        if hl7.parse(resp_data).extract_field("MSA", field_num=1) == "AA":
+            return True
+        else:
+            return False
+    return True
 
 @app.route("/")
 def index():
+    app_logger.add_info_log("Application launched")
     return flask.redirect("/workflow/all")
 
 
@@ -89,9 +110,7 @@ def patient_information(id):
 
 @app.route("/edit_profile/<id>", methods=["GET", "POST"])
 def edit_profile(id):
-    # TODO - Add a new HL7 message in order to show the updated fields
     patient = client.get_document('patients', {'_id': id})
-    address = patient.get('address', {})
     PatientDemForm = PatientDemographics()
     if request.method == "POST" and PatientDemForm.validate():
         date = datetime.datetime.now().strftime("%Y%m%d")
@@ -119,31 +138,9 @@ def edit_profile(id):
                 }
             }
         )
+        patient = client.get_document("patients", {"_id": id})
         # Creating HL7 ADT^A08 message
-        adt_a08 = HL7MessageBuilder()
-        adt_a08.add_segment(
-            "MSH|^~\&|OPENRIS|DEBUG HOSPITAL|HIS|DEBUG HOSPITAL|"+date+"||ADT^A08^ADT_A08|"+str(uuid4())+"|D|2.8||\r"
-        )
-        adt_a08.add_segment(
-            "EVN|A01|" + date + "||\r"
-        )
-        adt_a08.add_segment(
-            "PID|1||"+id+"^5^M11^ADT1^MR^DEBUG HOSPITAL||"+PatientDemForm.patient_name.data.upper()+"^"+
-            PatientDemForm.patient_surname.data.upper()+"||"+PatientDemForm.patient_dob.data.replace('-', '')+"|"+
-            PatientDemForm.patient_sex.data.get('sex', '').upper()+"||"+patient.get('ethnicity', '').upper()+"|"+
-            PatientDemForm.patient_address.data.upper()+"^^"+PatientDemForm.patient_city.data.upper()+"^"+
-            address.get('province', '').upper()+"^"+PatientDemForm.patient_zip_code.data.upper()+"^"+
-            PatientDemForm.patient_country.data.upper()+"|"+address.get('county-code', '').upper()+"|"+
-            PatientDemForm.patient_phone_number.data+"|"+patient.get('business-phone', '')+"|"+
-            patient.get('language', '').upper()+"|"+patient.get('marital-status', '').upper()+"|"+
-            patient.get('religion', '').upper()+"||"+patient.get('ssn', '')+"||\r"
-        )
-        adt_a08.add_segment(
-            "PV1||"+patient.get('patient-class', 'I')+"||"+patient.get('admission-type', 'R')+"||||"+
-            PatientDemForm.patient_referring_physician_id+"^"+PatientDemForm.patient_referring_physician_name.data.upper()+"^"+
-            PatientDemForm.patient_referring_physician_surname.data.upper()+"||MED||||ADM|A0|\r"
-        )
-        hl7_log(adt_a08.build(), "OUT")
+        send_hl7(construct_adt_a08(patient, date, generate_uuid()))
         return flask.redirect("/patients")
     elif request.method == "POST":
         flash("Errors in the form", "error")
@@ -172,107 +169,186 @@ def receive_hl7_message():
 
     match extract_information(message, "MSH", field_num=9, component_num=3):
         case "ADT_A01":
-            ret_message = ADTA01Validator().validate_and_ack(message, pattern_val, "DEBUG HOSPITAL", "OPENRIS")
-            hl7_log(message, "IN")
-            if extract_information(ret_message, "MSA", field_num=1) == "AA":
-                # TODO - Add patient to patients DB if do not already exist
-                new_patient_id = extract_information(message, "PID", field_num=3)
-                is_existing_patient = client.get_document('patients', {'_id': new_patient_id})
-                if is_existing_patient is None:    # Create new patient
-                    new_patient = {
-                        '_id': new_patient_id,
-                        'name': extract_information(message, "PID", field_num=5, component_num=1) if extract_information(message, "PID", field_num=5, component_num=1) else "",
-                        'surname': extract_information(message, "PID", field_num=5, component_num=2) if extract_information(message, "PID", field_num=5, component_num=2) else "",
-                        'dob': f"{extract_information(message, "PID", field_num=7)[:4]}-{extract_information(message, "PID", field_num=7)[4:6]}-{extract_information(message, "PID", field_num=7)[6:8]}" if extract_information(message, "PID", field_num=7) else "",
-                        'sex': extract_information(message, "PID", field_num=8) if extract_information(message, "PID", field_num=8) else "U",
-                        'phone_number': extract_information(message, "PID", field_num=13) if extract_information(message, "PID", field_num=13) else "",
-                        'email': extract_information(message, "PID", field_num=14) if extract_information(message, "PID", field_num=14) else "",
-                        'address': {
-                            'address': extract_information(message, "PID", field_num=11, component_num=1) if extract_information(message, "PID", field_num=11, component_num=1) else "",
-                            'complement': extract_information(message, "PID", field_num=11, component_num=2) if extract_information(message, "PID", field_num=11, component_num=2) else "",
-                            'city': extract_information(message, "PID", field_num=11, component_num=3) if extract_information(message, "PID", field_num=11, component_num=3) else "",
-                            'zip_code': extract_information(message, "PID", field_num=11, component_num=5) if extract_information(message, "PID", field_num=11, component_num=5) else "",
-                            'country': extract_information(message, "PID", field_num=11, component_num=6) if extract_information(message, "PID", field_num=11, component_num=6) else "",
-                        },
-                        'referring_physician': {
-                            '_id': extract_information(message, "PV1", field_num=8, component_num=1) if extract_information(message, "PV1", field_num=8, component_num=1) else "",
-                            'name': extract_information(message, "PV1", field_num=8, component_num=2) if extract_information(message, "PV1", field_num=8, component_num=2) else "",
-                            'surname': extract_information(message, "PV1", field_num=8, component_num=3) if extract_information(message, "PV1", field_num=8, component_num=3) else ""
-                        }
-                    }
-                    client.add_document('patients', new_patient)
-                    APP_LOGGER.info(f"New patient {new_patient['_id']} added to DB")
+            valid = ADTA01Validator().validate_and_ack(message, pattern_val, config.INSTITUTION_NAME, "OPENRIS")
+            hl7_logger.add_log("IN", str(valid))
+            if extract_information(valid, "MSA", field_num=1) == "AA":
+                success = handlers.handle_adta01(message, client)
+                if success:
+                    hl7_logger.add_log("OUT", str(valid))
+                    return make_response(jsonify({"ack": valid}), 200)
                 else:
-                    APP_LOGGER.info(f"Patient {new_patient_id} already exist in DB")
-                return flask.Response(status=200)
-            hl7_log(ret_message, "OUT")
-            return flask.Response(status=400)
+                    return flask.Response(status=200)    # Not destined for RIS
+            else:
+                hl7_logger.add_log("OUT", str(valid))
+                return make_response(jsonify({"ack": valid}), 400)
+        case"ADT_A04":
+            valid = ADTA04Validator().validate_and_ack(message, pattern_val, config.INSTITUTION_NAME, "OPENRIS")
+            hl7_logger.add_log("IN", str(message))
+            if extract_information(valid, "MSA", field_num=1) == "AA":
+                success = handlers.handle_adta04(message, client)
+                if success:
+                    hl7_logger.add_log("OUT", str(valid))
+                    return make_response(jsonify({"ack": str(valid)}), 200)
+                else:
+                    return flask.Response(status=200)    # Not destined for the RIS
+            else:
+                hl7_logger.add_log("OUT", str(valid))
+                return make_response(jsonify({"ack": str(valid)}), 400)
+        case "ADT_A08":
+            valid = ADTA08Validator().validate_and_ack(message, pattern_val, config.INSTITUTION_NAME, "OPENRIS")
+            hl7_logger.add_log("IN", str(message))
+            if extract_information(valid, "MSA", field_num=1) == "AA":
+                success = handlers.handle_adta08(message, client)
+                if success:
+                    hl7_logger.add_log("OUT", str(valid))
+                    return make_response(jsonify({"ack": str(valid)}), 200)
+                else:
+                    return flask.Response(status=200)
+            else:
+                hl7_logger.add_log("OUT", str(valid))
+                return make_response(jsonify({"ack": str(valid)}), 400)
+        case "ORM_O01":
+            valid = ORMO01Validator().validate_and_ack(message, pattern_val, config.INSTITUTION_NAME, "OPENRIS")
+            hl7_logger.add_log("IN", str(message))
+            if extract_information(valid, "MSA", field_num=1) == "AA":
+                success = handlers.handle_orm_o01(message, client)
+                if success:
+                    hl7_logger.add_log("OUT", str(valid))
+                    return make_response(jsonify({"ack": str(valid)}), 200)
+                else:
+                    valid = message.create_ack("AR", message_id=str(generate_uuid()), facility=config.INSTITUTION_NAME, application="OPENRIS")
+                    hl7_logger.add_log("OUT", str(valid))
+                    return make_response(jsonify({"ack": str(valid)}), 400)
         case _:
-            hl7_log(message, "IN")
-            APP_LOGGER.info(f"Uncaught HL7 message: {message}")
-            return flask.Response(status=400)
+            hl7_logger.add_log("IN", str(message))
+            valid = message.create_ack("AR", generate_uuid(), config.INSTITUTION_NAME, "OPENRIS")
+            hl7_logger.add_log("OUT", str(valid))
+            app_logger.add_error_log(f"Uncaught HL7 message: {message}")
+            return make_response(jsonify({"ack": str(valid)}), 400)
 
 
-@app.route("/create_new_order/<id>", methods=["GET", "POST"])
-def create_new_order(id):
-    form = Order()
-    form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in client.get_documents('procedures', {'modality': form.imaging_modality.choices[0][1].split('_')[0]})]
-    if request.method == "POST" and form.examination_date.form.validate() and form.validate_ordering_physician(form.ordering_physician):
-        procedure = client.get_document("procedures", {"_id": form.procedure.data})
-        modality = form.imaging_modality.data
+@app.route('/schedule/<patient_id>/<proc_id>', methods=['GET'])
+def schedule(patient_id, proc_id):
+    procedure = client.get_document('procedures', {'_id': proc_id})
+    possible_scheduling = scheduler.get_possible_schedules(int(procedure["duration"]), patient_id, [station for station in modalities if station.startswith(procedure["modality"])], client)
+    slots = list()
+    for possible_slot in possible_scheduling:
+        slot_id = possible_slot[1].date.strftime("%Y-%m-%d")+"|"+possible_slot[1].start_t.strftime("%H:%M")+"|"+possible_slot[1].end_t.strftime("%H:%M")+"|"+possible_slot[0]
+        slot_display = possible_slot[1].date.strftime("%Y-%m-%d")+" "+possible_slot[1].start_t.strftime("%H:%M")+" - "+possible_slot[1].end_t.strftime("%H:%M")
+        slots.append(
+            {
+                "id": slot_id,
+                "elem": slot_display
+            }
+        )
+    return slots
+
+
+@app.route("/schedule_order/<id>", methods=['POST'])
+def schedule_new_order(id):
+    order = client.get_document('orders', {'_id': id})
+    patient = client.get_document('patients', {'_id': order['patient_id']})
+    procedure = client.get_document('procedures', {'name': order['procedure']})
+    date = request.form["slots"].split('|')
+    order["examination_date"] = {
+        "date": date[0],
+        "start_time": date[1],
+        "end_time": date[2],
+    }
+    order["status"] = "SCHEDULED"
+    order["station_aet"] = date[3]
+    if send_hl7(construct_orm_o01(order, procedure, patient, generate_uuid(), datetime.datetime.now().strftime("%Y%m%d"), "SC", "SC")):
+        client.update_document(
+            'orders',
+            id,
+            {
+                "status": "SCHEDULED",
+                "station_aet": date[3],
+                "examination_date": {
+                    "date": date[0],
+                    "start_time": date[1],
+                    "end_time": date[2],
+                }
+            }
+        )
+        app_logger.add_info_log(f"HIS successfully gets the scheduling of order {id}")
+        flash(f"Order {id} has been successfully scheduled!", "toast")
+    else:
+        app_logger.add_error_log(f"HIS failed to get the scheduling of order {id}")
+        flash(f"Order {id} failed to be scheduled!", "toast")
+    return flask.redirect("/")
+
+
+@app.route("/get_available_slots/<order_id>", methods=['GET'])
+def get_available_slots(order_id):
+    order = client.get_document('orders', {'_id': order_id})
+    procedure = client.get_document('procedures', {'name': order["procedure"]})
+    slots = scheduler.get_possible_schedules(procedure["duration"], order["patient_id"], [station for station in modalities if station.startswith(procedure["modality"])], client)
+    res = list()
+    for slot in slots:
+        slot_id = slot[1].date.strftime("%Y-%m-%d") + "|" + slot[1].start_t.strftime("%H:%M") + "|" + \
+                  slot[1].end_t.strftime("%H:%M") + "|" + slot[0]
+        slot_display = slot[1].date.strftime("%Y-%m-%d") + " " + slot[1].start_t.strftime(
+            "%H:%M") + " - " + slot[1].end_t.strftime("%H:%M")
+        res.append(
+            {
+                "id": slot_id,
+                "elem": slot_display
+            }
+        )
+    return res
+
+
+@app.route("/register_new_order/<patient_id>", methods=['GET', 'POST'])
+def register_new_order(patient_id):
+    order_form = Order()
+    patient = client.get_document('patients', {'_id': patient_id})
+    order_form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in client.get_documents('procedures', {'modality': order_form.imaging_modality.choices[0][1]})]
+    date = datetime.datetime.now().strftime("%Y%m%d")
+    if request.method == 'POST' and order_form.validate():
+        procedure = client.get_document('procedures', {'_id': order_form.procedure.data})
+        modality = order_form.imaging_modality.data
+        parsed_date = order_form.slots.data.split("|")
         examination_date = {
-            "date": str(form.examination_date.date.data),
-            "start_time": (datetime.datetime.strptime(str(form.examination_date.timing.data), "%H:%M:%S")).strftime("%H:%M:%S"),
-            "end_time": (datetime.datetime.strptime(str(form.examination_date.timing.data), "%H:%M:%S") + datetime.timedelta(minutes=int(procedure['duration']))).strftime("%H:%M:%S")
+            "date": str(parsed_date[0]),
+            "start_time": str(parsed_date[1]),
+            "end_time": str(parsed_date[2])
         }
-        ## TIMING CONFLICT DETECTION ##
-        patient_conflict = list(client.get_documents("orders", {
-            "patient_id": str(id),
-            "examination_date.date": examination_date["date"],
-            "is_active": True
-        }))
-        if utils.check_examination_date_overlapping(examination_date, patient_conflict):
-            APP_LOGGER.info(f"Patient {id} already have an examination at this time")
-            flash("Patient have already an examination at this time", "error")
-            return render_template("create_order.html", form=form, id=id)
 
-        modality_conflict = list(client.get_documents("orders", {
-            "station_aet": modality,
-            "examination_date.date": examination_date["date"],
-            "is_active": True
-        }))
-        if utils.check_examination_date_overlapping(examination_date, modality_conflict):
-            flash("This modality already booked for this timing", "error")
-            APP_LOGGER.info(f"Modality {modality} already booked for {examination_date['date']} at {examination_date['start_time']} - {examination_date['end_time']}")
-            return render_template("create_order.html", form=form, id=id)
-
-        ## NO CONFLICTS FOR TIMING EXAMINATION ##
-        # New Order Insertion in DB
         new_order = {
             "_id": utils.generate_uuid(),
-            "patient_id": str(id),
-            "modality": modality.split('_')[0],
-            "station_aet": modality,
+            "patient_id": patient["_id"],
+            "placer_physician": {
+                "_id": str(order_form.ordering_physician_identifier.data),
+                "name": str(order_form.ordering_physician_name.data).upper(),
+                "surname": str(order_form.ordering_physician_surname.data).upper(),
+                "department": str(order_form.placer_department.data).upper(),
+            },
+            "modality": modality,
+            "station_aet": parsed_date[3],
             "procedure": procedure['name'],
-            "note": form.add_note.data,
-            "ordering_physician": form.ordering_physician.data,
+            "note": order_form.add_note.data,
             "examination_date": examination_date,
             "status": "SCHEDULED",
             "is_active": True,
         }
-        sended = client.add_document("orders", new_order)
-        if not sended:
-            return flask.render_template("create_order.html", form=form, id=id)
-        flash("New Order Placed !", "toast")
-        APP_LOGGER.info(f"New order {new_order['_id']} placed for patient {id}")
-        return flask.redirect(url_for('index'))
-    elif request.method == "POST":
-        form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in
+        if send_hl7(construct_orm_o01(new_order, procedure, patient, generate_uuid(), datetime.datetime.now().strftime("%Y%m%d"), "NW", "")):
+            client.add_document('orders', new_order)
+            flash("New order registered!", "toast")
+            app_logger.add_info_log(f"New order {new_order['_id']} registered!")
+            return flask.redirect("/")
+        else:
+            flash("Failed to register the newest order!", "error")
+            app_logger.add_error_log(f"Failed to register order {new_order['_id']}")
+            return flask.redirect("/register_new_order/"+str(patient_id))
+    elif request.method == 'GET':
+        return flask.render_template("create_order.html", form=order_form, id=patient_id, p_name=patient["name"], p_surname=patient["surname"], flash_msg=flask.get_flashed_messages(with_categories=True))
+    else:
+        order_form.procedure.choices = [(procedure['_id'], procedure['name']) for procedure in
                                   client.get_documents('procedures', {
-                                      'modality': form.imaging_modality.data.split('_')[0]})]
-        flash("Error in form", "error")
-    return flask.render_template("create_order.html", form=form, id=id)
-
+                                      'modality': order_form.imaging_modality.data.split('_')[0]})]
+        flash("Error in Form", "error")
+        return flask.redirect("/register_new_order/"+str(patient_id))
 
 @app.route("/workflow/<filter>")
 def workflow(filter):
@@ -294,10 +370,82 @@ def workflow(filter):
     return flask.render_template("workflow.html", orders=orders, curr_date=str(current_date), page_name=f"workflow-{page_name}", flash_msg=messages)
 
 
-@app.route("/report")
+@app.route("/search-reports", methods=["GET", "POST"])
 def report():
-    # TODO - Implement this page + server logic
-    return flask.redirect("/")
+    searching_form = SearchSpecificReport()
+    if request.method == "POST" and searching_form.validate():
+        if searching_form.observation.data:
+            reports = client.get_documents('reports', {
+                "labels." + str(searching_form.section_find.data): {
+                    "$elemMatch": {
+                        "observation": searching_form.observation.data.lower(),
+                        "tags": searching_form.select_presence.data
+                    }
+                }
+            })
+
+            return flask.render_template("reports.html", reports=reports, search_form=searching_form)
+    reports = client.get_documents('reports', {})
+    searching_form.observation.data = ""
+    return flask.render_template("reports.html", reports=reports, search_form=searching_form)
+
+
+@app.route("/create-report/<id>", methods=["GET", "POST"])
+def create_report(id):
+    order = client.get_document('orders', {'_id': id})
+    patient = client.get_document('patients', {'_id': order['patient_id']})
+    procedure = client.get_document('procedures', {'name': order['procedure']})
+    info = {
+        'patient': patient,
+        'order' : order
+    }
+    form = NewReport()
+
+    if request.method == 'POST' and form.validate():
+        processed_impressions = ner_model.process_data(form.impressions.data)
+        processed_findings = ner_model.process_data(form.findings.data)
+        label = dict()
+        label['findings'] = list()
+        label['impressions'] = list()
+        for item in processed_impressions[0]:
+            label['impressions'].append(item)
+        for item in processed_findings[0]:
+            label['findings'].append(item)
+        client.add_document('reports', {
+            '_id': utils.generate_uuid(),
+            'order_id': order['_id'],
+            'patient_id': patient['_id'],
+            'labels': label,
+            'impressions-text': processed_impressions[1]['radgraph_text'],
+            'findings-text': processed_findings[1]['radgraph_text'],
+            'impressions-annotations': processed_impressions[1]['radgraph_annotations'],
+            'findings-annotations': processed_findings[1]['radgraph_annotations'],
+            'recommendations': form.recommendations.data,
+            'date': datetime.datetime.today().date().strftime("%Y-%m-%d"),
+            'time': datetime.datetime.now().strftime("%H:%M"),
+            'radiologist': {
+                'name': form.name.data.upper(),
+                'surname': form.surname.data.upper(),
+            }
+        })
+        client.update_document('orders', order['_id'], {'is_active': False})
+        report = client.get_document('reports', {'order_id': order['_id']})
+        _ = send_hl7(construct_oru_r01(report, procedure, order, patient, generate_uuid(), datetime.datetime.today().date().strftime("%Y%m%d")))
+        flash(f"Report Created for {order['_id']}", 'toast')
+        return flask.redirect("/")
+    elif request.method == 'GET':
+        return flask.render_template("report.html", info=info, form=form, flash_msg=flask.get_flashed_messages(with_categories=True))
+    else:
+        flash("Error in report Form", "error")
+        return flask.redirect("/")
+
+
+@app.route("/view-report/<patient_id>/<order_id>")
+def view_report(patient_id, order_id):
+    report = client.get_document('reports', {"patient_id": patient_id, "order_id": order_id})
+    patient = client.get_document('patients', {"_id": patient_id})
+    order = client.get_document('orders', {"_id": order_id})
+    return flask.render_template("report_viewer.html", info={"patient": patient, "order": order, "report": report}, flash_msg=flask.get_flashed_messages(with_categories=True))
 
 
 @app.route("/get_procedures/<modality>")
@@ -309,11 +457,19 @@ def get_procedures(modality):
 
 @app.route("/remove_order/<order_id>")
 def remove_order(order_id):
-    # TODO - Add a log message to inform about the order deletion (OMI^O23 HL7 to build)
+    old_order = client.get_document('orders', {'_id': order_id})
+    procedure = client.get_document('procedures', {'name': old_order['procedure']})
+    patient = client.get_document('patients', {'_id': old_order['patient_id']})
     deleted_order = client.delete_document("orders", order_id)    # Return a DeleteResult (status + elem deleted)
     if deleted_order.acknowledged and deleted_order.raw_result['n']:
+        stat = send_hl7(construct_orm_o01(old_order, procedure, patient, generate_uuid(), datetime.datetime.today().date().strftime("%Y%m%d"), "OC", "CA"))
+        if stat:
+            app_logger.add_info_log(f"Message successfully sent to HIS")
+        else:
+            app_logger.add_error_log(f"Message failed to sent to HIS")
         flash(f"Order {order_id} removed", "toast")
     else:
+        app.logger.error(f"Error when deleting {order_id} order")
         flash(f"Error when deleting {order_id} order", "error")
     return flask.redirect("/workflow/all")
 
@@ -324,44 +480,52 @@ def create_worklist(order_id):
     accession_number = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + datetime.datetime.now().strftime("%f")[:2]
     order = client.get_document("orders", {'_id': order_id})
     patient = client.get_document("patients", {'_id': order["patient_id"]})
-    address = patient.get('address', {})
     procedure = client.get_document("procedures", {'name': order['procedure']})
     study_uid = generate_uid()
-    omi_message = HL7MessageBuilder()
-    omi_message.add_segment(
-        "MSH|^~\&|OPENRIS|DEBUG HOSPITAL|ORTHANC|DEBUG HOSPITAL|"+datetime.datetime.now().strftime("%Y%m%d")+"||OMI^O23^OMI_O23|"+str(uuid4())+"|D|2.8|\r"
-    )
-    omi_message.add_segment(
-        "PID|1||"+patient['_id']+"^5^M11^ADT1^MR^DEBUG HOSPITAL||"+patient["name"]+"^"+patient["surname"]+"||"+patient.get('dob', '').replace('-', '')+"|"+patient.get('sex', '')+"||"+patient.get('ethnicity', '')+"|"+address.get('address', '').upper()+"^^"+address.get('city', '').upper()+"^"+address.get('province', '').upper()+"^"+address.get('zip-code', '').upper()+"^"+address.get('country', '').upper()+"|"+address.get('county-code', '').upper()+"|"+patient.get('phone_number', '')+"||"+patient.get('language', '').upper()+"|"+patient.get('marital-status', '').upper()+"|"+patient.get('religion', '').upper()+"||"+patient.get('ssn', '')+"||\r"
-    )
-    omi_message.add_segment(
-        "ORC|NW||||SC|\r"
-    )
-    omi_message.add_segment(
-        "OBR||||"+procedure['_id']+"^"+procedure['name']+"||"+order['examination_date']['date'].replace('-', '')+"^"+order['examination_date']['start_time'].replace(':', '')+"|\r"
-    )
-    omi_message.add_segment(
-        "IPC|"+accession_number+"|"+procedure['_id']+"|"+str(study_uid)+"|"+procedure['_id']+"|"+order['modality']+"||||"+order['station_aet']+"|\r"
-    )
-    hl7_log(omi_message.build(), "OUT")
-    resp = requests.post(f"{ORTHANC_SERVER}mwl/create_worklist", data=omi_message.get_message(), headers={"Content-Type": "application/hl7"})
-    resp_data = resp.content.decode('utf-8')
-    hl7_log(hl7.parse(resp_data), "IN")
-    if hl7.parse(resp_data).extract_field("MSA", field_num=1) == "AA":
+    omi_msg = construct_omi_023(patient, procedure, order, str(generate_uuid()), accession_number, datetime.datetime.now().strftime("%Y%m%d"), study_uid)
+    if send_hl7(omi_msg):
         client.update_document(
-            "orders",
+            'orders',
             order_id,
             {
                 "status": "GENERATED",
-                "study_instance_uid": str(study_uid),
+                "study_instance_uid": study_uid,
                 "accession_number": accession_number,
             }
         )
+        app_logger.add_info_log(f"Worklist with accession number {accession_number} created")
         flash(f"Worklist {accession_number} created", "toast")
     else:
-        flash(f"Error when creating {accession_number} worklist", "error")
+        app_logger.add_error_log(f"Error when creating sending order {order_id} to create worklist")
+        flash(f"Error when creating worklist {accession_number}", "error")
     return flask.redirect("/workflow/today")
 
+
+@app.route("/new_study", methods=["POST"])
+def new_study():
+    data = request.get_json()
+    order_to_update = client.get_document("orders", {"accession_number": data["accession-number"]})
+    client.update_document("orders", order_to_update['_id'], {"status": "IN PROGRESS", "executive-start-time": data["creation-time"]})
+    return flask.Response(status=200)
+
+
+@app.route("/stable_study", methods=["POST"])
+def stable_study():
+    data = request.get_json()
+    if not data:
+        return flask.Response(status=400)
+    else:
+        order_to_update = client.get_document("orders", {"accession_number": data["accession-number"]})
+        procedure = client.get_document("procedures", {"name": order_to_update["procedure"]})
+        patient = client.get_document("patients", {"_id": order_to_update["patient_id"]})
+        client.update_document("orders", order_to_update['_id'], {
+            "status": "FINISHED",
+            "orthanc_study_id": data["ID"],
+            "orthanc_series_id": data["Series"],
+            "executive-end-time": data["creation-time"],
+        })
+        _ = send_hl7(construct_orm_o01(order_to_update, procedure, patient, generate_uuid(), datetime.datetime.today().date().strftime("%Y%m%d"), "SC", "CM"))
+        return flask.Response(status=200)
 
 @app.route('/get_order_info/<order_id>')
 def get_order_info(order_id):
@@ -373,28 +537,37 @@ def get_order_info(order_id):
     return jsonify(order)
 
 
-@app.route('/new_study_created', methods=['POST'])
-def new_study_created():
-    data = flask.request.get_json()
-    order_to_update = client.get_document("orders", {'accession_number': data['accession-number']})
-    client.update_document('orders', order_to_update['_id'], {"status": "IN PROGRESS", "executive-start-time": data["creation-time"]})
-    return flask.Response()
-
-
-@app.route('/stable_study', methods=['POST'])
-def stable_study():
-    req = flask.request.get_json()
-    if not req:
-        return flask.Response(status=400)
+@app.route('/new_procedure', methods=['GET', 'POST'])
+def new_procedure():
+    procedure_form = NewProcedureForm()
+    if request.method == 'POST' and procedure_form.validate():
+        new_proc = {
+            '_id': procedure_form.procedure_id.data,
+            'name': procedure_form.procedure_name.data.upper(),
+            'modality': procedure_form.procedure_modality.data,
+            'duration': int(procedure_form.procedure_duration.data)
+        }
+        # Check if the procedure is already in the system
+        try:
+            client.add_document("procedures", new_proc)
+            flash("New procedure added", "toast")
+            return flask.redirect("/")
+        except WriteError:
+            flash(f"Procedure {new_proc['name']} cannot be added", "error")
+            app.logger.error(f"Procedure {new_proc['name']} already exists in DB")
+            return flask.redirect("/new_procedure")
+    elif request.method == 'GET':
+        return flask.render_template('new_procedure.html', page_name='new_proc', form=procedure_form, flash_msg=flask.get_flashed_messages(with_categories=True))
     else:
-        order_to_update = client.get_document("orders", {"accession_number": req['AccessionNumber']})
-        client.update_document("orders", order_to_update['_id'], {
-            "status": "FINISHED",
-            "orthanc_study_id": req["ID"],
-            "orthanc_series_id": req["Series"],
-            "executive-end-time": req["creation-time"]
-        })
-        return flask.Response(status=200)
+        flash("Error in form", "error")
+        return flask.redirect("/new_procedure")
+
+
+@app.route("/view_series/<serie_id>")
+def view_series(serie_id):
+    return {
+        "url": config.ORTHANC_SERVER+"web-viewer/app/viewer.html?series="+serie_id
+    }
 
 
 if __name__ == "__main__":

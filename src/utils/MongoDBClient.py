@@ -1,4 +1,7 @@
-from pymongo import MongoClient, errors
+"""
+This file contains a toolbox to use MongoDB system.
+"""
+from pymongo import MongoClient
 
 
 class MongoDBClient:

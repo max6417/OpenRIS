@@ -58,8 +58,11 @@
                         <td>{% if order['executive-start-time'] %}{{ order['executive-start-time'] }}{% else %}-{% endif %}</td>
                         <td>{% if order['executive-end-time'] %}{{ order['executive-end-time'] }}{% else %}-{% endif %}</td>
                         <td>
-                            <a class="btn-floating btn-small grey" href="view_report/{{ order.report_id }}">
+                            <a class="btn-floating btn-small grey" href="/view-report/{{ order.patient_id }}/{{ order._id }}">
                                 <i class="material-icons">remove_red_eye</i>
+                            </a>
+                            <a class="btn-floating btn-small teal" onclick="getSeriesUrl('{{ order.orthanc_series_id[0] }}')">
+                                <i class="material-icons">crop_original</i>
                             </a>
                         </td>
                     </tr>
@@ -162,6 +165,7 @@
         </div>
     </div>
     <script type="text/javascript" src="../js/tab_sorting.js"></script>
+    <script type="text/javascript" src="../js/view_series.js"></script>
     <style>
     .custom-table-pointer th[onclick] {
             cursor: pointer;

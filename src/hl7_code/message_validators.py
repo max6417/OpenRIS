@@ -1,14 +1,28 @@
+"""
+This file contains all the code to validate the message before processing it. It is based on a set of rule defined by
+several JSON files representing the structure of each message used and the structure of each segment and the pattern
+required for each field, component, subcomponent. In order to have a unique validator foreach message.
+This file shouldn't be modified but all the JSON files has to be in order to fit the workflow of the organisation
+"""
 import json
 import re
 from abc import ABC, abstractmethod
 import hl7
 from uuid import uuid4
-"""
-Caution : Maybe change return 
-"""
 
 
-def extract_information(message: hl7.Message, segment: str, segment_num=1, field_num=1, repeat_num=1, component_num=1, subcomponent_num=1):
+def extract_information(message: hl7.Message, segment: str, segment_num=1, field_num=1, repeat_num=1, component_num=1, subcomponent_num=1) -> str | None:
+    """
+    Function to extract specific information from a HL7 message
+        :param @message: A hl7.Message object representing the message where the information has to be extracted
+        :param @segment: the segment ID where the information has to be extracted
+        :param @segment_num: the segment number where the information has to be extracted if applicable
+        :param @field_num: the field number where the information has to be extracted
+        :param @repeat_num: the repeat number where the information has to be extracted if applicable
+        :param @component_num: the component number where the information has to be extracted
+        :param @subcomponent_num: the subcomponent number where the information has to be extracted if applicable
+    returns the information extracted from the @message, None if a KeyError is raise
+    """
     try:
         return message.extract_field(segment, segment_num, field_num, repeat_num, component_num, subcomponent_num)
     except KeyError:
@@ -31,7 +45,7 @@ class PatternValidator:
             return False
         msg_config = self.m_config.get("messages", {}).get(msg_t, None)
         if msg_config is None:
-            return True    #No config find for this message -> Pattern always valid
+            return True    # No config find for this message -> Pattern always valid
         for segment_name, segment_config in msg_config.items():
             if not self.__validate_segment_pattern(message, segment_name, segment_config.get("required", False)):
                 return False
@@ -82,32 +96,70 @@ class PatternValidator:
 
 #### VALIDATOR SECTION ####
 # Only useful if you want to add additional check more specific rules
+# Each class represents the validation of one specific message, at the moment all have the same code but it let each
+# institution extends the classes for more advanced verification
 
 class MessageValidator(ABC):
     @abstractmethod
     def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
-        # TODO use pattern_validator to validate pattern of the message
-        # TODO perform some additional operations to validate message if needed
         pass
 
 
 class ADTA01Validator(MessageValidator):
 
     def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
-        # TODO : complete the method
         message_id = uuid4()
-        if pattern_validator.validate_pattern(message):
+        if pattern_validator.validate_pattern(message) and extract_information(message, "MSH", field_num=5) != "OPENRIS":
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+        elif pattern_validator.validate_pattern(message):
             return message.create_ack("AA", message_id=message_id, facility=facility, application=application)
         else:
-            return message.create_ack("AE", message_id=message_id, facility=facility, application=application)
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
 
 
 class OMIO23Validator(MessageValidator):
 
     def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
-        #TODO : complete the method
         message_id = uuid4()
-        if pattern_validator.validate_pattern(message):
+        if pattern_validator.validate_pattern(message) and extract_information(message, "MSH", field_num=5) != "OPENRIS":
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+        elif pattern_validator.validate_pattern(message):
             return message.create_ack("AA", message_id=message_id, facility=facility, application=application)
         else:
-            return message.create_ack("AE", message_id=message_id, facility=facility, application=application)
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+
+
+class ADTA08Validator(MessageValidator):
+
+    def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
+        message_id = uuid4()
+        if pattern_validator.validate_pattern(message) and extract_information(message, "MSH", field_num=5) != "OPENRIS":
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+        elif pattern_validator.validate_pattern(message):
+            return message.create_ack("AA", message_id=message_id, facility=facility, application=application)
+        else:
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+
+
+class ADTA04Validator(MessageValidator):
+
+    def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
+        message_id = uuid4()
+        if pattern_validator.validate_pattern(message) and extract_information(message, "MSH", field_num=5) != "OPENRIS":
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+        elif pattern_validator.validate_pattern(message):
+            return message.create_ack("AA", message_id=message_id, facility=facility, application=application)
+        else:
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+
+
+class ORMO01Validator(MessageValidator):
+
+    def validate_and_ack(self, message: hl7.Message, pattern_validator: PatternValidator, facility: str, application: str) -> hl7.Message:
+        message_id = uuid4()
+        if pattern_validator.validate_pattern(message) and extract_information(message, "MSH", field_num=5) != "OPENRIS":
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)
+        elif pattern_validator.validate_pattern(message):
+            return message.create_ack("AA", message_id=message_id, facility=facility, application=application)
+        else:
+            return message.create_ack("AR", message_id=message_id, facility=facility, application=application)

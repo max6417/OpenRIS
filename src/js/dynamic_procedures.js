@@ -16,7 +16,6 @@ function loadProcedure(modality) {
 
 
 document.getElementById("imaging_modality").addEventListener('change', () => {
-    // TODO - Verify this function and fix it !
     const modality = document.getElementById("imaging_modality").value;
     if (modality) loadProcedure(modality);
 });

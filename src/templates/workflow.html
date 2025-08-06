@@ -7,10 +7,11 @@
                 <th onclick="tableSorting('workflow-table', 1)">Patient</th>
                 <th onclick="tableSorting('workflow-table', 2)">Procedure</th>
                 <th onclick="tableSorting('workflow-table', 3)">Modality</th>
-                <th onclick="tableSorting('workflow-table', 4)">Status</th>
-                <th onclick="tableSorting('workflow-table', 5)">Date</th>
-                <th onclick="tableSorting('workflow-table', 6)">Scheduled Timing</th>
-                <th onclick="tableSorting('workflow-table', 7)">Execution Timing</th>
+                <th onclick="tableSorting('workflow-table', 4)">Station</th>
+                <th onclick="tableSorting('workflow-table', 5)">Status</th>
+                <th onclick="tableSorting('workflow-table', 6)">Date</th>
+                <th onclick="tableSorting('workflow-table', 7)">Scheduled Timing</th>
+                <th onclick="tableSorting('workflow-table', 8)">Execution Timing</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -21,6 +22,7 @@
                     <td>{{ order.patient_surname }} {{ order.patient_name }}</td>
                     <td>{{ order.procedure }}</td>
                     <td>{{ order.modality }}</td>
+                    <td>{{ order.station_aet }}</td>
                     <td>{{ order.status }}</td>
                     <td>{{ order.examination_date.date }}</td>
                     <td>{{ order.examination_date.start_time }} - {{ order.examination_date.end_time }}</td>
@@ -30,22 +32,53 @@
                             <a class="btn-floating btn-small red" href="/remove_order/{{ order._id }}">
                                 <i class="material-icons">remove</i>
                             </a>
-                            {% if order.examination_date.date == curr_date %}
-                                <a class="btn-floating btn-small grey darken-1" href="/create_worklist/{{ order._id }}">
-                                    <i class="material-icons">assignment</i>
-                                </a>
-                            {% endif %}
+                        {% if order.examination_date.date == curr_date %}
+                            <a class="btn-floating btn-small grey darken-1" href="/create_worklist/{{ order._id }}">
+                                <i class="material-icons">assignment</i>
+                            </a>
+                        {% endif %}
                         {% elif order.status == "FINISHED" %}
+                            <a class="btn-floating btn-small teal" onclick="getSeriesUrl('{{ order.orthanc_series_id[0] }}')">
+                                <i class="material-icons">crop_original</i>
+                            </a>
                             <a href="/create-report/{{ order._id }}" class="btn-floating btn-small grey">
-                                <i class="material-icons">assignment_late</i>
+                                <i class="material-icons">create</i>
+                            </a>
+                        {% elif order.status == "UNSCHEDULED" %}
+                            <a class="btn-floating btn-small orange modal-trigger" href="#rescheduled-modal-{{ order._id }}" onclick="getAvailableSlots('{{ order._id }}')">
+                                <i class="material-icons">access_time</i>
+                            </a>
+                            <a class="btn-floating btn-small red" href="/remove_order/{{ order._id }}">
+                                <i class="material-icons">remove</i>
                             </a>
                         {% endif %}
                     </td>
                 </tr>
+                <div id="rescheduled-modal-{{ order._id }}" class="modal">
+                    <form method="POST" action="{{ url_for('schedule_new_order', id=order._id) }}">
+                        <div class="modal-content">
+                            <h4>Reschedule Order</h4>
+                            <div class="input-field">
+                                <select id="slots-{{ order._id }}" name="slots" style="display: block"></select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="modal-close waves-effect waves-light btn" type="submit" name="action">Reschedule</button>
+                        </div>
+                    </form>
+                </div>
             {% endfor %}
         </tbody>
     </table>
     <script type="text/javascript" src="../js/tab_sorting.js"></script>
+    <script type="text/javascript" src="../js/workflow.js"></script>
+    <script type="text/javascript" src="../js/view_series.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll(".modal");
+            var inst = M.Modal.init(elems, {});
+        });
+    </script>
     <style>
         .custom-table-pointer th[onclick] {
             cursor: pointer;

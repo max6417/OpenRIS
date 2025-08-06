@@ -1,5 +1,6 @@
-import re
-
+"""
+This fie is outdated and are not use anymore
+"""
 import hl7
 
 

@@ -1,28 +1,13 @@
 """
-La classe Scheduler correspond au code permettant de calculer et de renvoyer des slots horaires pour un certain examen,
-patient, et modalité. Il fonctionne comme suit :
-    - Extrait les données d'intérêts : Les examens déjà prévus par chaque station de la modalité concernée + les examens déjà prévu
-    pour le patient.
-    - Génère les slots théoriques pour l'examen qu'on veut schedule sans prendre en compte ceux déjà attribué ou qui overlap
-    - On delete les slots qui sont déjà occupés ou partiellemet occupés pour ne garder que les bons (pour chacune des stations)
-    - On formatte les slots restant pour les envoyer au server (date+heure+station) ou all si toutes les stations sont dispo --> On prend toujours la station la moins fréquentée s'il y en a plusieurs
-Pas le plus opti mais c'est pas l'objet du mémoire d'avoir un système sous contrainte parfaite, ici c'est juste les premisses qui permettraient
-par la suite d'avoir un système de scheduling plus complexe que celui-là.
-
-
-La classe Slot représente un slot horaire pour la procédure cible. Elle contient les infos de timing + le nombre et nom(s)
-des stations disponibles pour ce slot. Si plus de station disponible, le slot n'est pas pris en compte pour le calcul final
-
-Si un patient n'est pas dispo pour un slot, alors il est également discard de la liste des slots disponibles.
-
-
-Pour plus de complexité, on pourrait également se servir de ces classes pour ajouter la notion de priorité des ordres et de rescheduling
-(à voir pour plus tard)
-
-
-Pour le rescheduling, on doit ajouter de nouveaux bouton (rescheduler permettant d'ouvrir le scheduler) + RESCHEDULED status ordre + bouton pour valider la reschedulation et repasser à schedule
+This file contains all the logic about the scheduling of an order. It generates all the possible slot to book for a
+specific order and patient, including the constraint of a shift and a range of day. It works as following :
+    - Extract the examens already reserved for each station of the concerned modality + examens already scheduled for a certain patient (avoid overlapping)
+    - Generate all the possible slots given a shift and a range of day
+    - Delete already booked slots or overlapping slot with existing orders
+    - Returns all the remaining slot that can be booked
 """
 from src.utils.MongoDBClient import MongoDBClient
+from typing import Any
 import datetime
 
 
@@ -46,6 +31,11 @@ class Slot:
         self._nb_stations_available = len(self.stations)
 
     def disable_station(self, station: str):
+        """
+        Function that disables a station from a slot (self). If a slot has no remaining station available
+        the slot is disabled and cannot be returned by the scheduler.
+            @param station: the station to disable
+        """
         if not self.is_active:
             pass
         elif not self.stations[station]:
@@ -56,6 +46,9 @@ class Slot:
             self.check_activity()
 
     def disable_all_stations(self):
+        """
+        Function to disable all the stations and so disable the slot
+        """
         for station in self.stations.keys():
             self.disable_station(station)
 
@@ -77,7 +70,13 @@ class Scheduler:
         self.d_start = d_start
         self.d_end = d_end
 
-    def __extract_stations_scheduled_orders(self, stations: list, m_client: MongoDBClient):
+    def __extract_stations_scheduled_orders(self, stations: list, m_client: MongoDBClient) -> dict:
+        """
+        Function that extracts all the orders scheduled in DB using one of the stations in @stations.
+            @pre stations: a list of stations (str)
+            @pre m_client: MongoDB client object
+        returns a dictionary {station: list of orders}
+        """
         result = dict()
         for station in stations:
             result[station] = m_client.get_documents(
@@ -85,21 +84,40 @@ class Scheduler:
                 {
                     "station_aet": station,
                     "status": {
-                        "$in": ["SCHEDULED", "RESCHEDULED", "GENERATED", "IN PROGRESS"]
+                        "$in": ["SCHEDULED", "GENERATED", "IN PROGRESS"]
+                    },
+                    "examination_date": {
+                        "date": {"$gte": datetime.datetime.now().strftime("%Y-%m-%d")}
                     }
                 }
             )
         return result
 
-    def __extract_patient_scheduled_orders(self, patient_id: str, m_client: MongoDBClient):
+    def __extract_patient_scheduled_orders(self, patient_id: str, m_client: MongoDBClient) -> list[dict[str, Any]]:
+        """
+        Function that extracts all the orders scheduled in DB concerning the patient with @patient_id
+            @pre patient_id: the patient ID
+            @pre m_client: MongoDB client object
+        return a list of orders concerning patient with @patient_id
+        """
         return m_client.get_documents('orders', {
             "patient_id": patient_id,
             "status": {
-                "$in": ["SCHEDULED", "RESCHEDULED", "GENERATED", "IN PROGRESS"]
+                "$in": ["SCHEDULED", "GENERATED", "IN PROGRESS"]
+            },
+            "examination_date": {
+                "date": {"$gte": datetime.datetime.now().strftime("%Y-%m-%d")}
             }
         })
 
-    def __create_possible_slots(self, duration, stations):
+    def __create_possible_slots(self, duration: int, stations: list[str]) -> dict[datetime.datetime, list[Slot]]:
+        """
+        Function that creates all the possible slots (Slot) for a certain order duration starting from the start shift @d_start
+        ending from the end shift @d_end and for a number of day @d_range.
+            @pre duration: an integer representing the duration in minutes of the procedure to schedule
+            @pre stations: a list of stations (str)
+        return a dictionary {date: list of slots}
+        """
         current_date = datetime.date.today()   # Date without time
         dates = [current_date + datetime.timedelta(days=i) for i in range(self.d_range + 1)]
         planning = dict()
@@ -121,7 +139,15 @@ class Scheduler:
                 current_end_time = current_start_time + datetime.timedelta(minutes=duration)
         return planning
 
-    def get_possible_schedules(self, duration: int, patient_id: str, stations: list, m_client: MongoDBClient):
+    def get_possible_schedules(self, duration: int, patient_id: str, stations: list, m_client: MongoDBClient) -> list[tuple[str, Slot]]:
+        """
+        Function that delete impossible slot and only return the possible slots to be scheduled. This is the entry point
+        to get the possible slot to schedule a new order
+            @pre duration: an integer representing the duration in minutes of the procedure to schedule
+            @pre patient_id: the patient ID
+            @pre stations: a list of stations (str)
+            @pre m_client: MongoDB client object
+        """
         start_date = datetime.date.today()
         end_date = datetime.date.today() + datetime.timedelta(days=self.d_range)
         stations_scheduled_orders = self.__extract_stations_scheduled_orders(stations, m_client)
@@ -133,14 +159,11 @@ class Scheduler:
             stations_workload[station] = 0
         for station, orders in stations_scheduled_orders.items():
             stations_workload[station] = len(orders)
-        # TODO : finish the planning slot by deleting already booked ones
 
-        # TODO : delete slot already passed time (current time > slot start time)
         current_time = datetime.datetime.now().time()
         for i in range(len(planning[start_date])):
             if planning[start_date][i].start_t.time() < current_time:
                 planning[start_date][i].disable_all_stations()
-        # TODO : delete slot and stations already reserved
         for station, orders in stations_scheduled_orders.items():
             for order in orders:
                 date = datetime.datetime.strptime(order["examination_date"]["date"], "%Y-%m-%d").date()
@@ -149,7 +172,6 @@ class Scheduler:
                 for i in range(len(planning[date])):
                     if self.__is_overlapping(planning[date][i].start_t, planning[date][i].end_t, o_start_t, o_end_t):
                         planning[date][i].disable_station(station)
-        # TODO : delete slot already in use for the patient
         for order in patient_scheduled_orders:
             date = datetime.datetime.strptime(order["examination_date"]["date"], "%Y-%m-%d").date()
             o_start_t = datetime.datetime.combine(date, datetime.datetime.strptime(order["examination_date"]["start_time"], "%H:%M").time())
@@ -157,7 +179,6 @@ class Scheduler:
             for i in range(len(planning[date])):
                 if self.__is_overlapping(planning[date][i].start_t, planning[date][i].end_t, o_start_t, o_end_t):
                     planning[date][i].disable_all_stations()
-        # TODO : Format the response to return it to the server [(id: date+time+station, date+time), ...] + decide which station to use with respect to the least frequented station if several choices are possible
         result = list()
         for date, slots in planning.items():
             for slot in slots:
@@ -171,6 +192,14 @@ class Scheduler:
         return result
 
     def __is_overlapping(self, t_start_slot: datetime.datetime, t_end_slot: datetime.datetime, t_start_order: datetime.datetime, t_end_order: datetime.datetime) -> bool:
+        """
+        Simple function that checks whether a slot is overlapping with an already scheduled order.
+            @pre t_start_slot: the start time of the slot
+            @pre t_end_slot: the end time of the slot
+            @pre t_start_order: the start time of the order
+            @pre t_end_order: the end time of the order
+        returns True if overlapping, False otherwise
+        """
         if t_start_order < t_start_slot < t_end_order:
             return True
         elif t_start_order < t_end_slot < t_end_order:

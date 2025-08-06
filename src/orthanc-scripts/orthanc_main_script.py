@@ -1,5 +1,12 @@
+"""
+The file is a simple script to extend the functionalities of Orthanc by catching OMI message from OpenRIS and add
+worklist in the worklist directory to be served + communicate the beginning of the examination + the end of the examination
+by using the Orthanc callback system.
+"""
+
 import sys
-sys.path.append("/home/rencelotm/OpenRIS/.venv/lib/python3.12/site-packages")
+# TODO indicate the localisation of your python environnement for example : "OpenRIS/.venv/lib/python3.12/site-packages"
+sys.path.append("")
 import os
 import os.path
 import pydicom
@@ -10,13 +17,18 @@ import orthanc
 import requests
 import hl7
 
-WORKLIST_DIRECTORY = "/home/rencelotm/WorklistsDatabase"
+WORKLIST_DIRECTORY = ""    # Indicate the directory of the worklist DB same as config.py or in config file of orthanc
 MODALITY_WORKLIST_SOP_CLASS = "1.2.840.100008.5.1.4.31"
-RIS_SERVER = "http://localhost:5000/"
-ORTHANC_SERVER = "http://localhost:8042/"
+ORTHANC_AET = "ORTHANC"
+INSTITUTION_NAME = "DEBUG HOSPITAL"
+RIS_SERVER = ""    # Indicate the address of OpenRIS localhost:5000 by default
+ORTHANC_SERVER = ""    # Indicate the address of Orthanc localhost:8042/ by default
 
 
-def create_worklist(data: hl7.Message):
+def create_worklist(data: hl7.Message) -> Dataset:
+    """
+    This function take an OMI hl7.Message and create a worklist from it.
+    """
     ds = Dataset()
     # Meta Information
     ds.file_meta = FileMetaDataset()
@@ -28,6 +40,12 @@ def create_worklist(data: hl7.Message):
     ds.InstanceCreationDate = datetime.datetime.now().strftime("%Y%m%d").replace("-", "")
     ds.InstanceCreationTime = datetime.datetime.now().strftime("%H%M%S").replace(":", "")
     ds.AccessionNumber = data.extract_field("IPC", field_num=1)
+    ds.OrderPlacerIdentifierSequence = [Dataset()]
+    ds.OrderPlacerIdentifierSequence[0].UniversalEntityID = data.extract_field("ORC", field_num=2)
+    ds.OrderPlacerIdentifierSequence[0].UniversalEntityIDType = "UUID"
+    ds.OrderFillerIdentifierSequence = [Dataset()]
+    ds.OrderFillerIdentifierSequence[0].UniversalEntityID = data.extract_field("ORC", field_num=3)
+    ds.OrderFillerIdentifierSequence[0].UniversalEntityIDType = "UUID"
     ds.PatientName = f"{data.extract_field("PID", field_num=5, component_num=1)}^{data.extract_field("PID", field_num=5, component_num=2)}"
     ds.PatientID = data.extract_field("PID", field_num=3, component_num=1)
     ds.PatientBirthDate = data.extract_field("PID", field_num=7)
@@ -45,6 +63,9 @@ def create_worklist(data: hl7.Message):
 
 
 def RegisterWorklist(output, uri, **request):
+    """
+    This is the entry point (REST API) to add a new worklist to the database maintained by Orthanc
+    """
     if request['method'] != 'POST':
         output.SendMethodNotAllowed('GET')
     else:
@@ -55,21 +76,24 @@ def RegisterWorklist(output, uri, **request):
             worklist = create_worklist(data)
             # Save the worklist in the correct directory
             worklist.save_as(f"{WORKLIST_DIRECTORY}/wklist{data.extract_field("IPC", field_num=1)}.wl", write_like_original=False)
-            output.AnswerBuffer(str(data.create_ack("AA", data.extract_field("MSH", field_num=10), "ORTHANC", "DEBUG HOSPITAL")), "application/json")
+            output.AnswerBuffer(str(data.create_ack("AA", data.extract_field("MSH", field_num=10), ORTHANC_AET, INSTITUTION_NAME)), "application/json")
         else:
-            output.AnswerBuffer(str(data.create_ack("AE", data.extract_field("MSH", field_num=10), "ORTHANC", "DEBUG HOSPITAL")), "application/json")
+            output.AnswerBuffer(str(data.create_ack("AE", data.extract_field("MSH", field_num=10), ORTHANC_AET, INSTITUTION_NAME)), "application/json")
 
 
 def OnChangeStudy(change_type, level, resource):
+    """
+    Function to listen some CallBack coming from Orthanc : NEW_STUDY and STABLE_STUDY
+    """
     if change_type == orthanc.ChangeType.NEW_STUDY:
-        creation_time = datetime.datetime.now().strftime("%H:%M:%S")
+        creation_time = datetime.datetime.now().strftime("%H:%M")
         resp = requests.get(f"{ORTHANC_SERVER}studies/{resource}")
         data = {
             'accession-number': resp.json()["MainDicomTags"]["AccessionNumber"],
             'creation-time': creation_time
         }
         if resp and resp.status_code == 200:
-            _ = requests.post(f"{RIS_SERVER}new_study_created", json=data)
+            _ = requests.post(f"{RIS_SERVER}new_study", json=data)
     elif change_type == orthanc.ChangeType.STABLE_STUDY:
         creation_time = datetime.datetime.now().strftime("%H:%M:%S")
         resp = requests.get(f"{ORTHANC_SERVER}studies/{resource}")
@@ -77,13 +101,13 @@ def OnChangeStudy(change_type, level, resource):
             resp = resp.json()
             data = {
                 "ID": resp["ID"],
-                "AccessionNumber": resp["MainDicomTags"]["AccessionNumber"],
+                "accession-number": resp["MainDicomTags"]["AccessionNumber"],
                 "Series": resp["Series"],
                 "creation-time": creation_time
             }
             _ = requests.post(f"{RIS_SERVER}stable_study", json=data)
             # Delete worklist file
-            os.remove(f"{WORKLIST_DIRECTORY}/wklist{data["AccessionNumber"]}.wl")
+            os.remove(f"{WORKLIST_DIRECTORY}/wklist{data["accession-number"]}.wl")
 
 
 orthanc.RegisterOnChangeCallback(OnChangeStudy)
